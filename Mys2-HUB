@@ -1,456 +1,187 @@
--- Mys2 Hub | Xeno-Compatible GUI (TP Float Edition)
+-- Mys2 Hub - Full Enhanced Script for Steal a Brainrot
 
-local player = game.Players.LocalPlayer
-repeat wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-local char = player.Character
-local hrp = char:WaitForChild("HumanoidRootPart")
-local humanoid = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid")
-
+--// Services
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local StarterGui = game:GetService("StarterGui")
 local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
 
-local speedEnabled = getgenv()._speedToggle or false
-local desiredSpeed = 90
+--// GUI Setup
+local screenGui = Instance.new("ScreenGui", game.CoreGui)
+screenGui.Name = "Mys2Hub"
 
--- Discord Integration
-local discordInvite = "https://discord.gg/spnTPXSvMk"
-local discordWebhook = "https://discord.com/api/webhooks/1396066702965346316/NDb7LEGDE9b5y3ymYEyuJcJdfOm8xotkuGNVsqTbfxkFmH4PKEsRc5GWaROkA8iZBqU6"
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 240, 0, 300)
+mainFrame.Position = UDim2.new(0, 10, 0, 100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
 
-local function sendDiscordWebhookNotification()
-    local data = {
-        content = "**Mys2 Hub script loaded**\nUser: " .. player.Name,
-        username = "Mys2 Hub Bot"
-    }
+local uiList = Instance.new("UIListLayout", mainFrame)
+uiList.Padding = UDim.new(0, 4)
 
-    local success, err = pcall(function()
-        HttpService:PostAsync(discordWebhook, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
+local function addButton(name, callback)
+    local button = Instance.new("TextButton", mainFrame)
+    button.Size = UDim2.new(1, -10, 0, 30)
+    button.Position = UDim2.new(0, 5, 0, 0)
+    button.Text = name
+    button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.BorderSizePixel = 0
+    button.MouseButton1Click:Connect(function()
+        callback(button)
     end)
+end
 
-    if not success then
-        warn("Failed to send Discord webhook: " .. tostring(err))
+--// Speed Boost
+local speedEnabled = false
+function setSpeed(value)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = value
     end
 end
 
-local function showDiscordPopup()
-    local popupGui = Instance.new("ScreenGui", game.CoreGui)
-    popupGui.Name = "DiscordInvitePopup"
+function hookWalkSpeed()
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        char:WaitForChild("Humanoid").WalkSpeed = speedEnabled and 32 or 16
+    end)
+end
 
-    local popupFrame = Instance.new("Frame", popupGui)
-    popupFrame.Size = UDim2.new(0, 300, 0, 150)
-    popupFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
-    popupFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    popupFrame.BorderSizePixel = 0
-    popupFrame.Active = true
-    popupFrame.Draggable = true
-
-    local title = Instance.new("TextLabel", popupFrame)
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.BackgroundTransparency = 1
-    title.Text = "Script Update Available!"
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-
-    local message = Instance.new("TextLabel", popupFrame)
-    message.Size = UDim2.new(1, -20, 0, 70)
-    message.Position = UDim2.new(0, 10, 0, 40)
-    message.BackgroundTransparency = 1
-    message.TextWrapped = true
-    message.Text = "A new script update is available.\nJoin our Discord server to stay updated and get support!"
-    message.TextColor3 = Color3.new(1, 1, 1)
-    message.Font = Enum.Font.Gotham
-    message.TextSize = 14
-
-    local inviteButton = Instance.new("TextButton", popupFrame)
-    inviteButton.Size = UDim2.new(0, 200, 0, 30)
-    inviteButton.Position = UDim2.new(0.5, -100, 1, -50)
-    inviteButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- Discord blurple
-    inviteButton.Text = "Join Discord"
-    inviteButton.TextColor3 = Color3.new(1, 1, 1)
-    inviteButton.Font = Enum.Font.GothamBold
-    inviteButton.TextSize = 16
-
-    local closeButton = Instance.new("TextButton", popupFrame)
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -35, 0, 5)
-    closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    closeButton.Text = "X"
-    closeButton.TextColor3 = Color3.new(1, 1, 1)
-    closeButton.Font = Enum.Font.GothamBold
-    closeButton.TextSize = 18
-
-    inviteButton.MouseButton1Click:Connect(function()
-        if setclipboard then
-            setclipboard(discordInvite)
+function startSpeedEnforcement()
+    RunService.Stepped:Connect(function()
+        if speedEnabled then
+            setSpeed(32)
         end
-        print("Discord invite copied to clipboard!")
-    end)
-
-    closeButton.MouseButton1Click:Connect(function()
-        popupGui:Destroy()
     end)
 end
 
--- GUI Setup
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "Mys2Hub"
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 440)
-frame.Position = UDim2.new(0, 20, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-title.Text = "Mys2 Hub"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-
-local nextButtonY = 40
-function autoToggle(name, callback)
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, -20, 0, 30)
-    btn.Position = UDim2.new(0, 10, 0, nextButtonY)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 14
-    btn.Text = name .. ": OFF"
-
-    local enabled = false
-    btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        btn.Text = name .. ": " .. (enabled and "ON" or "OFF")
-        callback(enabled)
-    end)
-
-    nextButtonY = nextButtonY + 40
-end
-
-function autoButton(name, callback)
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, -20, 0, 30)
-    btn.Position = UDim2.new(0, 10, 0, nextButtonY)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 14
-    btn.Text = name
-    btn.MouseButton1Click:Connect(callback)
-
-    nextButtonY = nextButtonY + 40
-end
-
--- Speed logic
-local speedConnection
-
-local function enforceSpeed()
-    if speedEnabled and humanoid and humanoid.Parent then
-        humanoid.WalkSpeed = desiredSpeed
-    elseif humanoid then
-        humanoid.WalkSpeed = 16
-    end
-end
-
-local function startSpeedEnforcement()
-    if speedConnection then speedConnection:Disconnect() end
-    speedConnection = RunService.Heartbeat:Connect(enforceSpeed)
-end
-
-local function stopSpeedEnforcement()
-    if speedConnection then
-        speedConnection:Disconnect()
-        speedConnection = nil
-    end
-    if humanoid then
-        humanoid.WalkSpeed = 16
-    end
-end
-
-local function hookWalkSpeed()
-    local success, mt = pcall(getrawmetatable, game)
-    if success and mt then
-        local oldIndex = mt.__index
-        local oldNewIndex = mt.__newindex
-        setreadonly(mt, false)
-
-        mt.__index = newcclosure(function(t, k)
-            if t == humanoid and k == "WalkSpeed" and speedEnabled then
-                return desiredSpeed
-            end
-            return oldIndex(t, k)
-        end)
-
-        mt.__newindex = newcclosure(function(t, k, v)
-            if t == humanoid and k == "WalkSpeed" and speedEnabled then
-                return
-            end
-            return oldNewIndex(t, k, v)
-        end)
-
-        setreadonly(mt, true)
-    end
-end
-
--- Teleport logic
-local function tpUp()
-    if hrp then
-        local pos = hrp.Position
-        hrp.CFrame = CFrame.new(pos.X, 300, pos.Z)
-    end
-end
-
-local function tpDown()
-    if hrp then
-        local pos = hrp.Position
-        hrp.CFrame = CFrame.new(pos.X, 10, pos.Z)
-    end
-end
-
-local function teleportToClosest()
-    local closest, dist = nil, math.huge
-    for _, other in pairs(game.Players:GetPlayers()) do
-        if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
-            local d = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                closest = other
-            end
-        end
-    end
-    if closest then
-        hrp.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
-    end
-end
-
--- ESP Logic
-
+--// ESP Setup
 local espMythicEnabled = false
 local espBrainrotEnabled = false
+local espPlayerEnabled = false
 
 local mythics = {
-    ["Frigo Camelo"] = {money = "1.2K", cost = "300K"},
-    ["Orangutini Ananassini"] = {money = "1.7K", cost = "400K"},
-    ["Rhino Toasterino"] = {money = "2.1K", cost = "450K"},
-    ["Bombardiro Crocodilo"] = {money = "2.5K", cost = "500K"},
-    ["Bombombini Gusini"] = {money = "5K", cost = "1M"},
-    ["Cavallo Virtuoso"] = {money = "7.5K", cost = "2.5M"},
-    ["Spioniro Golubiro"] = {money = "3.5K", cost = "750K"},
-    ["Zibra Zubra Zibralini"] = {money = "6K", cost = "1M"},
-    ["Tigrilini Watermelini"] = {money = "7.5K", cost = "1M"},
+    ["Frigo Camelo"] = {"1.2K", "300K"},
+    ["Orangutini Ananassini"] = {"1.7K", "400K"},
+    ["Rhino Toasterino"] = {"2.1K", "450K"},
+    ["Bombardiro Crocodilo"] = {"2.5K", "500K"},
+    ["Bombombini Gusini"] = {"5K", "1M"},
+    ["Cavallo Virtuoso"] = {"7.5K", "2.5M"},
+    ["Spioniro Golubiro"] = {"3.5K", "750K"},
+    ["Zibra Zubra Zibralini"] = {"6K", "1M"},
+    ["Tigrilini Watermelini"] = {"7.5K", "1M"},
 }
 
 local brainrots = {
-    ["Cocofanto Elefanto"] = {money = "10K", cost = "5M"},
-    ["Girafa Celestre"] = {money = "20K", cost = "7.5M"},
-    ["Gattatino Neonino"] = {money = "35K", cost = "7.5M"},
-    ["Matteo"] = {money = "50K", cost = "10M"},
-    ["Tralalero Tralala"] = {money = "50K", cost = "10M"},
-    ["Espresso Signora"] = {money = "70K", cost = "25M"},
-    ["Odin Din Din Dun"] = {money = "75K", cost = "15M"},
-    ["Statutino Libertino"] = {money = "75K", cost = "20M"},
-    ["Trenostruzzo Turbo 3000"] = {money = "150K", cost = "25M"},
-    ["Ballerino Lololo"] = {money = "200K", cost = "35M"},
-    ["Tigroligre Frutonni"] = {money = "60K", cost = "15M"},
-    ["Orcalero Orcala"] = {money = "100K", cost = "15M"},
+    ["Cocofanto Elefanto"] = {"10K", "5M"},
+    ["Girafa Celestre"] = {"20K", "7.5M"},
+    ["Gattatino Neonino"] = {"35K", "7.5M"},
+    ["Matteo"] = {"50K", "10M"},
+    ["Tralalero Tralala"] = {"50K", "10M"},
+    ["Espresso Signora"] = {"70K", "25M"},
+    ["Odin Din Din Dun"] = {"75K", "15M"},
+    ["Statutino Libertino"] = {"75K", "20M"},
+    ["Trenostruzzo Turbo 3000"] = {"150K", "25M"},
+    ["Ballerino Lololo"] = {"200K", "35M"},
+    ["Tigroligre Frutonni"] = {"60K", "15M"},
+    ["Orcalero Orcala"] = {"100K", "15M"},
 }
 
-local function getRarityFromModel(model)
-    local modelName = model.Name
-    if mythics[modelName] then
-        return "mythic", mythics[modelName]
-    elseif brainrots[modelName] then
-        return "brainrot god", brainrots[modelName]
-    end
-    return nil, nil
-end
+local function createESP(model, color, info)
+    if not model:FindFirstChild("PrimaryPart") then return end
 
-local function clearESP()
-    for _, p in pairs(game.Players:GetPlayers()) do
-        if p.Character and p.Character:FindFirstChild("ESPHighlight") then
-            p.Character.ESPHighlight:Destroy()
-        end
-    end
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            if obj:FindFirstChild("ESPHighlight") then
-                obj.ESPHighlight:Destroy()
-            end
-            if obj:FindFirstChild("ESPInfoGui") then
-                obj.ESPInfoGui:Destroy()
-            end
-        end
-    end
-end
-
-local function createESP(model, color, infoText)
-    if model:FindFirstChild("ESPHighlight") then
-        model.ESPHighlight:Destroy()
-    end
-    if model:FindFirstChild("ESPInfoGui") then
-        model.ESPInfoGui:Destroy()
-    end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ESPHighlight"
-    highlight.Adornee = model
+    local highlight = Instance.new("Highlight", model)
     highlight.FillColor = color
     highlight.FillTransparency = 0.4
     highlight.OutlineColor = Color3.new(1, 1, 1)
-    highlight.Parent = model
 
-    local primaryPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart") or model:FindFirstChildWhichIsA("MeshPart")
-    if not primaryPart then return end
+    local billboard = Instance.new("BillboardGui", model)
+    billboard.Adornee = model.PrimaryPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.AlwaysOnTop = true
+    billboard.Name = "ESPInfo"
 
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Name = "ESPInfoGui"
-    billboardGui.Adornee = primaryPart
-    billboardGui.Size = UDim2.new(0, 150, 0, 60)
-    billboardGui.AlwaysOnTop = true
-    billboardGui.Parent = model
-
-    local textLabel = Instance.new("TextLabel", billboardGui)
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = color
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 14
-    textLabel.Text = infoText
-    textLabel.TextWrapped = true
+    local text = Instance.new("TextLabel", billboard)
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.TextColor3 = color
+    text.Font = Enum.Font.GothamBold
+    text.TextScaled = true
+    text.Text = info
 end
 
-local espUpdateTimer = 0
-local espUpdateInterval = 0.7 -- seconds
-
-RunService.RenderStepped:Connect(function(delta)
-    espUpdateTimer = espUpdateTimer + delta
-    if espUpdateTimer >= espUpdateInterval then
-        espUpdateTimer = 0
-        clearESP()
-
-        if espMythicEnabled then
-            for _, model in pairs(Workspace:GetChildren()) do
-                if model:IsA("Model") then
-                    local rarity, data = getRarityFromModel(model)
-                    if rarity == "mythic" then
-                        createESP(model, Color3.fromRGB(0, 255, 255), model.Name .. "\nMoney/sec: " .. data.money .. "\nSell: " .. data.cost)
-                    end
-                end
+RunService.RenderStepped:Connect(function()
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj.PrimaryPart and not obj:FindFirstChild("ESPInfo") then
+            local name = obj.Name
+            if espMythicEnabled and mythics[name] then
+                createESP(obj, Color3.fromRGB(0, 255, 255), name .. "\\n" .. mythics[name][1] .. "/sec - " .. mythics[name][2])
+            elseif espBrainrotEnabled and brainrots[name] then
+                createESP(obj, Color3.fromRGB(0, 0, 255), name .. "\\n" .. brainrots[name][1] .. "/sec - " .. brainrots[name][2])
             end
         end
+    end
 
-        if espBrainrotEnabled then
-            for _, model in pairs(Workspace:GetChildren()) do
-                if model:IsA("Model") then
-                    local rarity, data = getRarityFromModel(model)
-                    if rarity == "brainrot god" then
-                        createESP(model, Color3.fromRGB(0, 170, 255), model.Name .. "\nMoney/sec: " .. data.money .. "\nSell: " .. data.cost)
-                    end
-                end
+    if espPlayerEnabled then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and not p.Character:FindFirstChild("ESPPlayer") then
+                local highlight = Instance.new("Highlight", p.Character)
+                highlight.Name = "ESPPlayer"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
             end
         end
     end
 end)
 
--- Player ESP (simpler box ESP)
-local espPlayerEnabled = false
-local espBoxes = {}
-
-local function createBoxForPlayer(plr)
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.new(1, 0, 0)
-    box.Thickness = 1
-    box.Filled = false
-    return box
-end
-
-local function updatePlayerESP()
-    for _, plr in pairs(game.Players:GetPlayers()) do
-        if plr ~= player then
-            if not espBoxes[plr] then
-                espBoxes[plr] = createBoxForPlayer(plr)
-            end
-        end
+--// Fling to Corner
+addButton("Fling to Corner", function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.Velocity = Vector3.new(999, 999, 999)
+        root.CFrame = CFrame.new(9999, 999, 9999)
     end
+end)
 
-    RunService.RenderStepped:Connect(function()
-        if not espPlayerEnabled then
-            for _, box in pairs(espBoxes) do
-                box.Visible = false
-            end
-            return
-        end
-
-        for plr, box in pairs(espBoxes) do
-            local char = plr.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp and hrp.Parent then
-                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                if onScreen then
-                    box.Position = Vector2.new(screenPos.X - box.Size / 2, screenPos.Y - box.Size / 2)
-                    box.Size = 50
-                    box.Visible = true
-                else
-                    box.Visible = false
-                end
-            else
-                box.Visible = false
-            end
-        end
-    end)
-end
-
--- GUI Buttons
-autoToggle("Speed", function(enabled)
-    speedEnabled = enabled
-    if enabled then
-        startSpeedEnforcement()
+--// GUI Buttons
+addButton("Speed Boost", function(btn)
+    speedEnabled = not speedEnabled
+    btn.Text = "Speed Boost: " .. (speedEnabled and "ON" or "OFF")
+    if speedEnabled then
+        setSpeed(32)
         hookWalkSpeed()
+        startSpeedEnforcement()
     else
-        stopSpeedEnforcement()
+        setSpeed(16)
     end
 end)
 
-autoToggle("Player ESP", function(enabled)
-    espPlayerEnabled = enabled
-    if enabled then
-        updatePlayerESP()
-    else
-        for _, box in pairs(espBoxes) do
-            box.Visible = false
-        end
-    end
+addButton("Toggle Mythic ESP", function(btn)
+    espMythicEnabled = not espMythicEnabled
+    btn.Text = "Mythic ESP: " .. (espMythicEnabled and "ON" or "OFF")
 end)
 
-autoToggle("Mythic ESP", function(state)
-    espMythicEnabled = state
-    if not state then
-        clearESP()
-    end
+addButton("Toggle Brainrot ESP", function(btn)
+    espBrainrotEnabled = not espBrainrotEnabled
+    btn.Text = "Brainrot ESP: " .. (espBrainrotEnabled and "ON" or "OFF")
 end)
 
-autoToggle("Brainrot God ESP", function(state)
-    espBrainrotEnabled = state
-    if not state then
-        clearESP()
-    end
+addButton("Toggle Player ESP", function(btn)
+    espPlayerEnabled = not espPlayerEnabled
+    btn.Text = "Player ESP: " .. (espPlayerEnabled and "ON" or "OFF")
 end)
 
-autoButton("TP Up", tpUp)
-autoButton("TP Down", tpDown)
-autoButton("TP Closest Player", teleportToClosest)
-
-autoButton("Server Hop", function()
-    print("Server hopping... (feature needs implementation)")
+--// Discord Button
+addButton("Join Discord", function()
+    setclipboard("https://discord.gg/brainrots")
+    StarterGui:SetCore("SendNotification", {
+        Title = "Copied!",
+        Text = "Copied Discord invite to clipboard. You can now close this window.",
+        Duration = 5
+    })
 end)
-
-sendDiscordWebhookNotification()
-showDiscordPopup()
