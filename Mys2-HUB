@@ -93,12 +93,12 @@ local function showDiscordPopup()
     end)
 end
 
--- GUI Setup for Mys2 Hub
+-- GUI Setup
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "Mys2Hub"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 400)
+frame.Size = UDim2.new(0, 200, 0, 440)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
@@ -203,7 +203,7 @@ end
 local function tpUp()
     if hrp then
         local pos = hrp.Position
-        hrp.CFrame = CFrame.new(pos.X, 300, pos.Z) -- Changed from 1000 to 300
+        hrp.CFrame = CFrame.new(pos.X, 300, pos.Z)
     end
 end
 
@@ -230,267 +230,185 @@ local function teleportToClosest()
     end
 end
 
--- ESP Data tables
-local brainrotGodRates = {
-    ["Cocofanto Elefanto"] = {moneyPerSec = "10K", sellsFor = "5M"},
-    ["Girafa Celestre"] = {moneyPerSec = "20K", sellsFor = "7.5M"},
-    ["Gattatino Neonino"] = {moneyPerSec = "35K", sellsFor = "7.5M"},
-    ["Matteo"] = {moneyPerSec = "50K", sellsFor = "10M"},
-    ["Tralalero Tralala"] = {moneyPerSec = "50K", sellsFor = "10M"},
-    ["Espresso Signora"] = {moneyPerSec = "70K", sellsFor = "25M"},
-    ["Odin Din Din Dun"] = {moneyPerSec = "75K", sellsFor = "15M"},
-    ["Statutino Libertino"] = {moneyPerSec = "75K", sellsFor = "20M"},
-    ["Trenostruzzo Turbo 3000"] = {moneyPerSec = "150K", sellsFor = "25M"},
-    ["Ballerino Lololo"] = {moneyPerSec = "200K", sellsFor = "35M"},
-    ["Tigroligre Frutonni"] = {moneyPerSec = "60K", sellsFor = "15M"},
-    ["Orcalero Orcala"] = {moneyPerSec = "100K", sellsFor = "15M"},
+-- ESP Logic
+
+local espMythicEnabled = false
+local espBrainrotEnabled = false
+
+local mythics = {
+    ["Frigo Camelo"] = {money = "1.2K", cost = "300K"},
+    ["Orangutini Ananassini"] = {money = "1.7K", cost = "400K"},
+    ["Rhino Toasterino"] = {money = "2.1K", cost = "450K"},
+    ["Bombardiro Crocodilo"] = {money = "2.5K", cost = "500K"},
+    ["Bombombini Gusini"] = {money = "5K", cost = "1M"},
+    ["Cavallo Virtuoso"] = {money = "7.5K", cost = "2.5M"},
+    ["Spioniro Golubiro"] = {money = "3.5K", cost = "750K"},
+    ["Zibra Zubra Zibralini"] = {money = "6K", cost = "1M"},
+    ["Tigrilini Watermelini"] = {money = "7.5K", cost = "1M"},
 }
 
-local mythicRates = {
-    ["Frigo Camelo"] = {moneyPerSec = "1.2K", sellsFor = "300K"},
-    ["Orangutini Ananassini"] = {moneyPerSec = "1.7K", sellsFor = "400K"},
-    ["Rhino Toasterino"] = {moneyPerSec = "2.1K", sellsFor = "450K"},
-    ["Bombardiro Crocodilo"] = {moneyPerSec = "2.5K", sellsFor = "500K"},
-    ["Bombombini Gusini"] = {moneyPerSec = "5K", sellsFor = "1M"},
-    ["Cavallo Virtuoso"] = {moneyPerSec = "7.5K", sellsFor = "2.5M"},
-    ["Spioniro Golubiro"] = {moneyPerSec = "3.5K", sellsFor = "750K"},
-    ["Zibra Zubra Zibralini"] = {moneyPerSec = "6K", sellsFor = "1M"},
-    ["Tigrilini Watermelini"] = {moneyPerSec = "7.5K", sellsFor = "1M"},
+local brainrots = {
+    ["Cocofanto Elefanto"] = {money = "10K", cost = "5M"},
+    ["Girafa Celestre"] = {money = "20K", cost = "7.5M"},
+    ["Gattatino Neonino"] = {money = "35K", cost = "7.5M"},
+    ["Matteo"] = {money = "50K", cost = "10M"},
+    ["Tralalero Tralala"] = {money = "50K", cost = "10M"},
+    ["Espresso Signora"] = {money = "70K", cost = "25M"},
+    ["Odin Din Din Dun"] = {money = "75K", cost = "15M"},
+    ["Statutino Libertino"] = {money = "75K", cost = "20M"},
+    ["Trenostruzzo Turbo 3000"] = {money = "150K", cost = "25M"},
+    ["Ballerino Lololo"] = {money = "200K", cost = "35M"},
+    ["Tigroligre Frutonni"] = {money = "60K", cost = "15M"},
+    ["Orcalero Orcala"] = {money = "100K", cost = "15M"},
 }
 
--- ESP State
-local playerESPEnabled = false
-local godsESPEnabled = false
-local mythicsESPEnabled = false
-
--- Drawing objects tables
-local playerBoxes = {}
-local godsBoxes = {}
-local mythicsBoxes = {}
-
--- Helper to create ESP box + text for NPCs
-local function createESPBox(color)
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = color
-    box.Thickness = 2
-    box.Filled = false
-
-    local text = Drawing.new("Text")
-    text.Visible = false
-    text.Center = true
-    text.Color = color
-    text.Size = 16
-    text.Outline = true
-    text.Font = 2 -- UI font
-
-    return {box = box, text = text}
+local function getRarityFromModel(model)
+    local modelName = model.Name
+    if mythics[modelName] then
+        return "mythic", mythics[modelName]
+    elseif brainrots[modelName] then
+        return "brainrot god", brainrots[modelName]
+    end
+    return nil, nil
 end
 
--- Player ESP (fixed)
-local function createPlayerESPBox()
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.new(1, 1, 1) -- White for players
-    box.Thickness = 2
-    box.Filled = false
-
-    local text = Drawing.new("Text")
-    text.Visible = false
-    text.Center = true
-    text.Color = Color3.new(1, 1, 1)
-    text.Size = 16
-    text.Outline = true
-    text.Font = 2 -- UI font
-
-    return {box = box, text = text}
-end
-
-local function cleanPlayerBoxes()
-    for plr, drawObjs in pairs(playerBoxes) do
-        if not plr.Parent or not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then
-            drawObjs.box:Remove()
-            drawObjs.text:Remove()
-            playerBoxes[plr] = nil
+local function clearESP()
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("ESPHighlight") then
+            p.Character.ESPHighlight:Destroy()
+        end
+    end
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") then
+            if obj:FindFirstChild("ESPHighlight") then
+                obj.ESPHighlight:Destroy()
+            end
+            if obj:FindFirstChild("ESPInfoGui") then
+                obj.ESPInfoGui:Destroy()
+            end
         end
     end
 end
 
--- ESP Update Loop
-RunService.RenderStepped:Connect(function()
-    local camera = workspace.CurrentCamera
-
-    -- Player ESP
-    if playerESPEnabled then
-        cleanPlayerBoxes()
-
-        for _, plr in pairs(game.Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                if not playerBoxes[plr] then
-                    playerBoxes[plr] = createPlayerESPBox()
-                end
-                local hrp = plr.Character.HumanoidRootPart
-                local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-                local drawObjs = playerBoxes[plr]
-
-                if onScreen then
-                    local size = Vector3.new(2, 5, 2)
-                    local corners = {
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, -size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, -size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, -size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, -size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, size.Z)),
-                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, size.Z)),
-                    }
-                    local xs, ys = {}, {}
-                    for _, corner in pairs(corners) do
-                        table.insert(xs, corner.X)
-                        table.insert(ys, corner.Y)
-                    end
-                    local minX, maxX = math.min(table.unpack(xs)), math.max(table.unpack(xs))
-                    local minY, maxY = math.min(table.unpack(ys)), math.max(table.unpack(ys))
-
-                    drawObjs.box.Position = Vector2.new(minX, minY)
-                    drawObjs.box.Size = Vector2.new(maxX - minX, maxY - minY)
-                    drawObjs.box.Visible = true
-
-                    drawObjs.text.Text = plr.Name
-                    drawObjs.text.Position = Vector2.new(minX + (drawObjs.box.Size.X / 2), minY - 20)
-                    drawObjs.text.Visible = true
-                else
-                    drawObjs.box.Visible = false
-                    drawObjs.text.Visible = false
-                end
-            end
-        end
-    else
-        for _, drawObjs in pairs(playerBoxes) do
-            drawObjs.box.Visible = false
-            drawObjs.text.Visible = false
-        end
+local function createESP(model, color, infoText)
+    if model:FindFirstChild("ESPHighlight") then
+        model.ESPHighlight:Destroy()
+    end
+    if model:FindFirstChild("ESPInfoGui") then
+        model.ESPInfoGui:Destroy()
     end
 
-    -- Brainrot Gods ESP (blue)
-    if godsESPEnabled then
-        for _, npc in pairs(Workspace:GetChildren()) do
-            if npc:IsA("Model") and brainrotGodRates[npc.Name] then
-                local hrp = npc:FindFirstChild("HumanoidRootPart")
-                local drawObjs = godsBoxes[npc]
-                if hrp then
-                    if not drawObjs then
-                        godsBoxes[npc] = createESPBox(Color3.fromRGB(0, 170, 255))
-                        drawObjs = godsBoxes[npc]
-                    end
-                    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-                    if onScreen then
-                        local size = Vector3.new(2, 5, 2)
-                        local corners = {
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, size.Z)),
-                        }
-                        local xs, ys = {}, {}
-                        for _, corner in pairs(corners) do
-                            table.insert(xs, corner.X)
-                            table.insert(ys, corner.Y)
-                        end
-                        local minX, maxX = math.min(table.unpack(xs)), math.max(table.unpack(xs))
-                        local minY, maxY = math.min(table.unpack(ys)), math.max(table.unpack(ys))
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESPHighlight"
+    highlight.Adornee = model
+    highlight.FillColor = color
+    highlight.FillTransparency = 0.4
+    highlight.OutlineColor = Color3.new(1, 1, 1)
+    highlight.Parent = model
 
-                        drawObjs.box.Position = Vector2.new(minX, minY)
-                        drawObjs.box.Size = Vector2.new(maxX - minX, maxY - minY)
-                        drawObjs.box.Visible = true
+    local primaryPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart") or model:FindFirstChildWhichIsA("MeshPart")
+    if not primaryPart then return end
 
-                        local info = brainrotGodRates[npc.Name]
-                        drawObjs.text.Text = npc.Name .. "\n" .. info.moneyPerSec .. "/sec\nSell: " .. info.sellsFor
-                        drawObjs.text.Position = Vector2.new(minX + (drawObjs.box.Size.X / 2), minY - 40)
-                        drawObjs.text.Visible = true
-                    else
-                        drawObjs.box.Visible = false
-                        drawObjs.text.Visible = false
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "ESPInfoGui"
+    billboardGui.Adornee = primaryPart
+    billboardGui.Size = UDim2.new(0, 150, 0, 60)
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Parent = model
+
+    local textLabel = Instance.new("TextLabel", billboardGui)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = color
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 14
+    textLabel.Text = infoText
+    textLabel.TextWrapped = true
+end
+
+local espUpdateTimer = 0
+local espUpdateInterval = 0.7 -- seconds
+
+RunService.RenderStepped:Connect(function(delta)
+    espUpdateTimer = espUpdateTimer + delta
+    if espUpdateTimer >= espUpdateInterval then
+        espUpdateTimer = 0
+        clearESP()
+
+        if espMythicEnabled then
+            for _, model in pairs(Workspace:GetChildren()) do
+                if model:IsA("Model") then
+                    local rarity, data = getRarityFromModel(model)
+                    if rarity == "mythic" then
+                        createESP(model, Color3.fromRGB(0, 255, 255), model.Name .. "\nMoney/sec: " .. data.money .. "\nSell: " .. data.cost)
                     end
-                elseif drawObjs then
-                    drawObjs.box.Visible = false
-                    drawObjs.text.Visible = false
-                    godsBoxes[npc] = nil
                 end
             end
         end
-    else
-        for npc, drawObjs in pairs(godsBoxes) do
-            drawObjs.box.Visible = false
-            drawObjs.text.Visible = false
-        end
-    end
 
-    -- Mythics ESP (red)
-    if mythicsESPEnabled then
-        for _, npc in pairs(Workspace:GetChildren()) do
-            if npc:IsA("Model") and mythicRates[npc.Name] then
-                local hrp = npc:FindFirstChild("HumanoidRootPart")
-                local drawObjs = mythicsBoxes[npc]
-                if hrp then
-                    if not drawObjs then
-                        mythicsBoxes[npc] = createESPBox(Color3.fromRGB(255, 50, 50))
-                        drawObjs = mythicsBoxes[npc]
+        if espBrainrotEnabled then
+            for _, model in pairs(Workspace:GetChildren()) do
+                if model:IsA("Model") then
+                    local rarity, data = getRarityFromModel(model)
+                    if rarity == "brainrot god" then
+                        createESP(model, Color3.fromRGB(0, 170, 255), model.Name .. "\nMoney/sec: " .. data.money .. "\nSell: " .. data.cost)
                     end
-                    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-                    if onScreen then
-                        local size = Vector3.new(2, 5, 2)
-                        local corners = {
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, -size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, size.Z)),
-                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, size.Z)),
-                        }
-                        local xs, ys = {}, {}
-                        for _, corner in pairs(corners) do
-                            table.insert(xs, corner.X)
-                            table.insert(ys, corner.Y)
-                        end
-                        local minX, maxX = math.min(table.unpack(xs)), math.max(table.unpack(xs))
-                        local minY, maxY = math.min(table.unpack(ys)), math.max(table.unpack(ys))
-
-                        drawObjs.box.Position = Vector2.new(minX, minY)
-                        drawObjs.box.Size = Vector2.new(maxX - minX, maxY - minY)
-                        drawObjs.box.Visible = true
-
-                        local info = mythicRates[npc.Name]
-                        drawObjs.text.Text = npc.Name .. "\n" .. info.moneyPerSec .. "/sec\nSell: " .. info.sellsFor
-                        drawObjs.text.Position = Vector2.new(minX + (drawObjs.box.Size.X / 2), minY - 40)
-                        drawObjs.text.Visible = true
-                    else
-                        drawObjs.box.Visible = false
-                        drawObjs.text.Visible = false
-                    end
-                elseif drawObjs then
-                    drawObjs.box.Visible = false
-                    drawObjs.text.Visible = false
-                    mythicsBoxes[npc] = nil
                 end
             end
-        end
-    else
-        for npc, drawObjs in pairs(mythicsBoxes) do
-            drawObjs.box.Visible = false
-            drawObjs.text.Visible = false
         end
     end
 end)
 
--- GUI Buttons for Mys2 Hub
+-- Player ESP (simpler box ESP)
+local espPlayerEnabled = false
+local espBoxes = {}
+
+local function createBoxForPlayer(plr)
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = Color3.new(1, 0, 0)
+    box.Thickness = 1
+    box.Filled = false
+    return box
+end
+
+local function updatePlayerESP()
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= player then
+            if not espBoxes[plr] then
+                espBoxes[plr] = createBoxForPlayer(plr)
+            end
+        end
+    end
+
+    RunService.RenderStepped:Connect(function()
+        if not espPlayerEnabled then
+            for _, box in pairs(espBoxes) do
+                box.Visible = false
+            end
+            return
+        end
+
+        for plr, box in pairs(espBoxes) do
+            local char = plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp and hrp.Parent then
+                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    box.Position = Vector2.new(screenPos.X - box.Size / 2, screenPos.Y - box.Size / 2)
+                    box.Size = 50
+                    box.Visible = true
+                else
+                    box.Visible = false
+                end
+            else
+                box.Visible = false
+            end
+        end
+    end)
+end
+
+-- GUI Buttons
 autoToggle("Speed", function(enabled)
     speedEnabled = enabled
     if enabled then
@@ -502,87 +420,37 @@ autoToggle("Speed", function(enabled)
 end)
 
 autoToggle("Player ESP", function(enabled)
-    playerESPEnabled = enabled
+    espPlayerEnabled = enabled
+    if enabled then
+        updatePlayerESP()
+    else
+        for _, box in pairs(espBoxes) do
+            box.Visible = false
+        end
+    end
 end)
 
-autoToggle("Brainrot Gods ESP", function(enabled)
-    godsESPEnabled = enabled
+autoToggle("Mythic ESP", function(state)
+    espMythicEnabled = state
+    if not state then
+        clearESP()
+    end
 end)
 
-autoToggle("Mythics ESP", function(enabled)
-    mythicsESPEnabled = enabled
+autoToggle("Brainrot God ESP", function(state)
+    espBrainrotEnabled = state
+    if not state then
+        clearESP()
+    end
 end)
 
 autoButton("TP Up", tpUp)
 autoButton("TP Down", tpDown)
 autoButton("TP Closest Player", teleportToClosest)
 
--- Server hop stub (you'll need to implement actual server hopping logic)
 autoButton("Server Hop", function()
     print("Server hopping... (feature needs implementation)")
 end)
 
--- Send Discord webhook notification and show popup invite on script load
 sendDiscordWebhookNotification()
 showDiscordPopup()
-
--- Mys2 Fling GUI
-
-local flingGui = Instance.new("ScreenGui", game.CoreGui)
-flingGui.Name = "Mys2Fling"
-
-local flingFrame = Instance.new("Frame", flingGui)
-flingFrame.Size = UDim2.new(0, 220, 0, 100)
-flingFrame.Position = UDim2.new(0, 250, 0, 100)
-flingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-flingFrame.BorderSizePixel = 0
-flingFrame.Active = true
-flingFrame.Draggable = true
-
-local flingTitle = Instance.new("TextLabel", flingFrame)
-flingTitle.Size = UDim2.new(1, 0, 0, 30)
-flingTitle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-flingTitle.Text = "Mys2 Fling"
-flingTitle.TextColor3 = Color3.new(1, 1, 1)
-flingTitle.Font = Enum.Font.GothamBold
-flingTitle.TextSize = 16
-
-local flingButton = Instance.new("TextButton", flingFrame)
-flingButton.Size = UDim2.new(0, 200, 0, 40)
-flingButton.Position = UDim2.new(0, 10, 0, 50)
-flingButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-flingButton.TextColor3 = Color3.new(1, 1, 1)
-flingButton.Font = Enum.Font.GothamBold
-flingButton.TextSize = 18
-flingButton.Text = "Fling Me Out!"
-
-local flingCooldown = false
-
-flingButton.MouseButton1Click:Connect(function()
-    if flingCooldown then return end
-    flingCooldown = true
-
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        warn("Character or HumanoidRootPart not found.")
-        flingCooldown = false
-        return
-    end
-
-    local hrp = player.Character.HumanoidRootPart
-
-    -- Teleport to corner of the map (example coordinates)
-    local cornerPosition = Vector3.new(-3000, 1000, -3000)
-    hrp.CFrame = CFrame.new(cornerPosition)
-
-    -- Apply velocity for fling effect
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    bodyVelocity.Velocity = Vector3.new(0, 200, 0) -- fling upwards strongly
-    bodyVelocity.Parent = hrp
-
-    -- Remove BodyVelocity after 1 second
-    delay(1, function()
-        bodyVelocity:Destroy()
-        flingCooldown = false
-    end)
-end)
