@@ -1,209 +1,169 @@
--- Mys2 Hub - Full Enhanced Script for Steal a Brainrot
+-- Mys2 Hub - Enhanced Full Script for "Steal a Brainrot"
 
 --// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local StarterGui = game:GetService("StarterGui")
+local Players, RunService, Workspace, StarterGui, HttpService = game:GetService("Players"), game:GetService("RunService"), game:GetService("Workspace"), game:GetService("StarterGui"), game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
---// Data
-local mythics = {
-    ["Frigo Camelo"] = {"1.2K", "300K"},
-    ["Orangutini Ananassini"] = {"1.7K", "400K"},
-    ["Rhino Toasterino"] = {"2.1K", "450K"},
-    ["Bombardiro Crocodilo"] = {"2.5K", "500K"},
-    ["Bombombini Gusini"] = {"5K", "1M"},
-    ["Cavallo Virtuoso"] = {"7.5K", "2.5M"},
-    ["Spioniro Golubiro"] = {"3.5K", "750K"},
-    ["Zibra Zubra Zibralini"] = {"6K", "1M"},
-    ["Tigrilini Watermelini"] = {"7.5K", "1M"},
-}
-local brainrots = {
-    ["Cocofanto Elefanto"] = {"10K", "5M"},
-    ["Girafa Celestre"] = {"20K", "7.5M"},
-    ["Gattatino Neonino"] = {"35K", "7.5M"},
-    ["Matteo"] = {"50K", "10M"},
-    ["Tralalero Tralala"] = {"50K", "10M"},
-    ["Espresso Signora"] = {"70K", "25M"},
-    ["Odin Din Din Dun"] = {"75K", "15M"},
-    ["Statutino Libertino"] = {"75K", "20M"},
-    ["Trenostruzzo Turbo 3000"] = {"150K", "25M"},
-    ["Ballerino Lololo"] = {"200K", "35M"},
-    ["Tigroligre Frutonni"] = {"60K", "15M"},
-    ["Orcalero Orcala"] = {"100K", "15M"},
-}
-
---// ESP
-local espMythicEnabled, espBrainrotEnabled, espPlayerEnabled = false, false, false
-
-function createTag(model, text, color)
-    local bb = Instance.new("BillboardGui", model)
-    bb.Adornee = model:FindFirstChild("PrimaryPart") or model:FindFirstChildWhichIsA("BasePart")
-    bb.Size = UDim2.new(0, 200, 0, 50)
-    bb.AlwaysOnTop = true
-    bb.Name = "ESPInfo"
-
-    local label = Instance.new("TextLabel", bb)
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = color
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-end
-
-RunService.RenderStepped:Connect(function()
-    for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and not obj:FindFirstChild("ESPInfo") then
-            if espMythicEnabled and mythics[obj.Name] then
-                createTag(obj, obj.Name .. "\n" .. mythics[obj.Name][1] .. "/sec - " .. mythics[obj.Name][2], Color3.fromRGB(0, 255, 255))
-            elseif espBrainrotEnabled and brainrots[obj.Name] then
-                createTag(obj, obj.Name .. "\n" .. brainrots[obj.Name][1] .. "/sec - " .. brainrots[obj.Name][2], Color3.fromRGB(0, 0, 255))
-            end
-        end
-    end
-    if espPlayerEnabled then
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character and not plr.Character:FindFirstChild("ESPPlayer") then
-                local h = Instance.new("Highlight", plr.Character)
-                h.Name = "ESPPlayer"
-                h.FillColor = Color3.fromRGB(255, 255, 0)
-                h.OutlineColor = Color3.new(1, 1, 1)
-            end
-        end
-    end
-end)
-
---// Speed
-local speedEnabled = false
-local function setSpeed(val)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = val
-    end
-end
-RunService.Stepped:Connect(function()
-    if speedEnabled then setSpeed(32) end
-end)
-
---// Main GUI
-local screenGui = Instance.new("ScreenGui", game.CoreGui)
-screenGui.Name = "Mys2MainGui"
-
-local function makeFrame()
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 250, 0, 350)
-    frame.Position = UDim2.new(0, 20, 0, 100)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+--// GUI INIT
+local function createGui(name, size, pos)
+    local gui = Instance.new("ScreenGui", game.CoreGui)
+    gui.Name = name
+    local frame = Instance.new("Frame", gui)
+    frame.Size = UDim2.new(0, size.X, 0, size.Y)
+    frame.Position = UDim2.new(0, pos.X, 0, pos.Y)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Draggable = true
-    frame.Parent = screenGui
-
-    local layout = Instance.new("UIListLayout", frame)
-    layout.Padding = UDim.new(0, 5)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    return frame
+    local list = Instance.new("UIListLayout", frame)
+    list.Padding = UDim.new(0, 4)
+    list.FillDirection = Enum.FillDirection.Vertical
+    list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    list.VerticalAlignment = Enum.VerticalAlignment.Top
+    return gui, frame
 end
 
-local mainFrame = makeFrame()
+local mainGui, mainFrame = createGui("Mys2Main", Vector2.new(250, 350), Vector2.new(10, 100))
+local flingGui, flingFrame = createGui("Mys2Fling", Vector2.new(150, 60), Vector2.new(270, 100))
 
-local function addButton(text, callback)
-    local btn = Instance.new("TextButton", mainFrame)
+--// Add Buttons
+local function addButton(frame, text, callback)
+    local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.Position = UDim2.new(0, 5, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.BorderSizePixel = 0
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 14
     btn.Text = text
-    btn.MouseButton1Click:Connect(function()
-        callback(btn)
-    end)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.MouseButton1Click:Connect(function() callback(btn) end)
 end
 
--- Buttons
-addButton("Speed Boost", function(btn)
+--// Speed Boost
+local speedEnabled = false
+local function setSpeed(val)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = val
+    end
+end
+
+addButton(mainFrame, "Speed Boost", function(btn)
     speedEnabled = not speedEnabled
     btn.Text = "Speed Boost: " .. (speedEnabled and "ON" or "OFF")
+    if speedEnabled then
+        RunService.Stepped:Connect(function()
+            if speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                setSpeed(32)
+            end
+        end)
+    else
+        setSpeed(16)
+    end
 end)
 
-addButton("TP Up", function()
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then hrp.CFrame = hrp.CFrame + Vector3.new(0, 15, 0) end
+--// Teleport Up / Down
+addButton(mainFrame, "TP Up", function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = root.CFrame + Vector3.new(0, 10, 0) end
 end)
 
-addButton("TP Down", function()
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then hrp.CFrame = hrp.CFrame - Vector3.new(0, 15, 0) end
+addButton(mainFrame, "TP Down", function()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = root.CFrame - Vector3.new(0, 10, 0) end
 end)
 
-addButton("Mythic ESP", function(btn)
-    espMythicEnabled = not espMythicEnabled
-    btn.Text = "Mythic ESP: " .. (espMythicEnabled and "ON" or "OFF")
+--// ESP Setup
+local mythics = {
+    ["Frigo Camelo"] = true, ["Orangutini Ananassini"] = true, ["Rhino Toasterino"] = true,
+    ["Bombardiro Crocodilo"] = true, ["Bombombini Gusini"] = true, ["Cavallo Virtuoso"] = true,
+    ["Spioniro Golubiro"] = true, ["Zibra Zubra Zibralini"] = true, ["Tigrilini Watermelini"] = true,
+}
+local brainrots = {
+    ["Cocofanto Elefanto"] = true, ["Girafa Celestre"] = true, ["Gattatino Neonino"] = true,
+    ["Matteo"] = true, ["Tralalero Tralala"] = true, ["Espresso Signora"] = true,
+    ["Odin Din Din Dun"] = true, ["Statutino Libertino"] = true, ["Trenostruzzo Turbo 3000"] = true,
+    ["Ballerino Lololo"] = true, ["Tigroligre Frutonni"] = true, ["Orcalero Orcala"] = true,
+}
+
+local espToggles = {mythic = false, brainrot = false, player = false}
+
+local function highlightModel(model, color)
+    local h = Instance.new("Highlight", model)
+    h.FillColor = color
+    h.FillTransparency = 0.3
+    h.OutlineColor = Color3.new(1, 1, 1)
+    h.OutlineTransparency = 0.1
+end
+
+RunService.RenderStepped:Connect(function()
+    for _, v in pairs(Workspace:GetChildren()) do
+        if v:IsA("Model") and v:FindFirstChild("PrimaryPart") then
+            if espToggles.mythic and mythics[v.Name] and not v:FindFirstChild("MythicESP") then
+                highlightModel(v, Color3.fromRGB(0, 255, 255)).Name = "MythicESP"
+            elseif espToggles.brainrot and brainrots[v.Name] and not v:FindFirstChild("BrainrotESP") then
+                highlightModel(v, Color3.fromRGB(0, 0, 255)).Name = "BrainrotESP"
+            end
+        end
+    end
+    if espToggles.player then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and not p.Character:FindFirstChild("PlayerESP") then
+                highlightModel(p.Character, Color3.fromRGB(255, 255, 0)).Name = "PlayerESP"
+            end
+        end
+    end
 end)
 
-addButton("Brainrot ESP", function(btn)
-    espBrainrotEnabled = not espBrainrotEnabled
-    btn.Text = "Brainrot ESP: " .. (espBrainrotEnabled and "ON" or "OFF")
+addButton(mainFrame, "Toggle Mythic ESP", function(btn)
+    espToggles.mythic = not espToggles.mythic
+    btn.Text = "Mythic ESP: " .. (espToggles.mythic and "ON" or "OFF")
+end)
+addButton(mainFrame, "Toggle Brainrot ESP", function(btn)
+    espToggles.brainrot = not espToggles.brainrot
+    btn.Text = "Brainrot ESP: " .. (espToggles.brainrot and "ON" or "OFF")
+end)
+addButton(mainFrame, "Toggle Player ESP", function(btn)
+    espToggles.player = not espToggles.player
+    btn.Text = "Player ESP: " .. (espToggles.player and "ON" or "OFF")
 end)
 
-addButton("Player ESP", function(btn)
-    espPlayerEnabled = not espPlayerEnabled
-    btn.Text = "Player ESP: " .. (espPlayerEnabled and "ON" or "OFF")
-end)
-
-addButton("Join Discord", function()
-    local popup = Instance.new("Frame", screenGui)
-    popup.Size = UDim2.new(0, 300, 0, 150)
-    popup.Position = UDim2.new(0.5, -150, 0.5, -75)
-    popup.BackgroundColor3 = Color3.fromRGB(30,30,30)
+--// Discord Popup
+local function createDiscordPopup()
+    local popup = Instance.new("Frame", mainGui)
+    popup.Size = UDim2.new(0, 200, 0, 100)
+    popup.Position = UDim2.new(0.5, -100, 0.5, -50)
+    popup.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     popup.BorderSizePixel = 0
 
+    local close = Instance.new("TextButton", popup)
+    close.Size = UDim2.new(0, 25, 0, 25)
+    close.Position = UDim2.new(1, -25, 0, 0)
+    close.Text = "X"
+    close.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+    close.TextColor3 = Color3.new(1, 1, 1)
+    close.MouseButton1Click:Connect(function() popup:Destroy() end)
+
     local label = Instance.new("TextLabel", popup)
-    label.Size = UDim2.new(1, 0, 0.6, 0)
-    label.Position = UDim2.new(0, 0, 0, 0)
-    label.Text = "Discord link copied to clipboard!\nYou can now close this window."
-    label.TextColor3 = Color3.new(1,1,1)
-    label.TextScaled = true
+    label.Size = UDim2.new(1, 0, 1, -25)
+    label.Position = UDim2.new(0, 0, 0, 25)
     label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Text = "Discord invite copied to clipboard!"
     label.Font = Enum.Font.Gotham
+    label.TextScaled = true
+end
 
-    local closeBtn = Instance.new("TextButton", popup)
-    closeBtn.Size = UDim2.new(0, 80, 0, 30)
-    closeBtn.Position = UDim2.new(1, -85, 1, -35)
-    closeBtn.Text = "Close"
-    closeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    closeBtn.TextColor3 = Color3.new(1,1,1)
-    closeBtn.Font = Enum.Font.Gotham
-    closeBtn.TextSize = 14
-    closeBtn.MouseButton1Click:Connect(function() popup:Destroy() end)
-
+addButton(mainFrame, "Join Discord", function()
     setclipboard("https://discord.gg/brainrots")
+    createDiscordPopup()
 end)
 
---// Fling GUI
-local flingGui = Instance.new("ScreenGui", game.CoreGui)
-flingGui.Name = "Mys2FlingGui"
-
-local flingFrame = makeFrame()
-flingFrame.Parent = flingGui
-flingFrame.Position = UDim2.new(0, 280, 0, 100)
-
-local flingBtn = Instance.new("TextButton", flingFrame)
-flingBtn.Size = UDim2.new(1, -10, 0, 30)
-flingBtn.Position = UDim2.new(0, 5, 0, 0)
-flingBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
-flingBtn.Text = "Fling to Corner"
-flingBtn.TextColor3 = Color3.new(1, 1, 1)
-flingBtn.Font = Enum.Font.Gotham
-flingBtn.TextSize = 14
-flingBtn.MouseButton1Click:Connect(function()
+--// Fling Button
+addButton(flingFrame, "Fling to Corner", function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if root then
-        root.Velocity = Vector3.new(999, 999, 999)
+        root.Velocity = Vector3.new(5000, 5000, 5000)
         root.CFrame = CFrame.new(9999, 999, 9999)
     end
 end)
