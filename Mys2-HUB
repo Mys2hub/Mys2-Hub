@@ -4,67 +4,10 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local TeleportService = game:GetService("TeleportService")
 local StarterGui = game:GetService("StarterGui")
-local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
---// GUI Setup
-local screenGui = Instance.new("ScreenGui", game.CoreGui)
-screenGui.Name = "Mys2Hub"
-
-local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 240, 0, 300)
-mainFrame.Position = UDim2.new(0, 10, 0, 100)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Draggable = true
-
-local uiList = Instance.new("UIListLayout", mainFrame)
-uiList.Padding = UDim.new(0, 4)
-
-local function addButton(name, callback)
-    local button = Instance.new("TextButton", mainFrame)
-    button.Size = UDim2.new(1, -10, 0, 30)
-    button.Position = UDim2.new(0, 5, 0, 0)
-    button.Text = name
-    button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    button.TextColor3 = Color3.new(1, 1, 1)
-    button.BorderSizePixel = 0
-    button.MouseButton1Click:Connect(function()
-        callback(button)
-    end)
-end
-
---// Speed Boost
-local speedEnabled = false
-function setSpeed(value)
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = value
-    end
-end
-
-function hookWalkSpeed()
-    LocalPlayer.CharacterAdded:Connect(function(char)
-        char:WaitForChild("Humanoid").WalkSpeed = speedEnabled and 32 or 16
-    end)
-end
-
-function startSpeedEnforcement()
-    RunService.Stepped:Connect(function()
-        if speedEnabled then
-            setSpeed(32)
-        end
-    end)
-end
-
---// ESP Setup
-local espMythicEnabled = false
-local espBrainrotEnabled = false
-local espPlayerEnabled = false
-
+--// Data
 local mythics = {
     ["Frigo Camelo"] = {"1.2K", "300K"},
     ["Orangutini Ananassini"] = {"1.7K", "400K"},
@@ -76,7 +19,6 @@ local mythics = {
     ["Zibra Zubra Zibralini"] = {"6K", "1M"},
     ["Tigrilini Watermelini"] = {"7.5K", "1M"},
 }
-
 local brainrots = {
     ["Cocofanto Elefanto"] = {"10K", "5M"},
     ["Girafa Celestre"] = {"20K", "7.5M"},
@@ -92,96 +34,176 @@ local brainrots = {
     ["Orcalero Orcala"] = {"100K", "15M"},
 }
 
-local function createESP(model, color, info)
-    if not model:FindFirstChild("PrimaryPart") then return end
+--// ESP
+local espMythicEnabled, espBrainrotEnabled, espPlayerEnabled = false, false, false
 
-    local highlight = Instance.new("Highlight", model)
-    highlight.FillColor = color
-    highlight.FillTransparency = 0.4
-    highlight.OutlineColor = Color3.new(1, 1, 1)
+function createTag(model, text, color)
+    local bb = Instance.new("BillboardGui", model)
+    bb.Adornee = model:FindFirstChild("PrimaryPart") or model:FindFirstChildWhichIsA("BasePart")
+    bb.Size = UDim2.new(0, 200, 0, 50)
+    bb.AlwaysOnTop = true
+    bb.Name = "ESPInfo"
 
-    local billboard = Instance.new("BillboardGui", model)
-    billboard.Adornee = model.PrimaryPart
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.AlwaysOnTop = true
-    billboard.Name = "ESPInfo"
-
-    local text = Instance.new("TextLabel", billboard)
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.TextColor3 = color
-    text.Font = Enum.Font.GothamBold
-    text.TextScaled = true
-    text.Text = info
+    local label = Instance.new("TextLabel", bb)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = color
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
 end
 
 RunService.RenderStepped:Connect(function()
     for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and obj.PrimaryPart and not obj:FindFirstChild("ESPInfo") then
-            local name = obj.Name
-            if espMythicEnabled and mythics[name] then
-                createESP(obj, Color3.fromRGB(0, 255, 255), name .. "\\n" .. mythics[name][1] .. "/sec - " .. mythics[name][2])
-            elseif espBrainrotEnabled and brainrots[name] then
-                createESP(obj, Color3.fromRGB(0, 0, 255), name .. "\\n" .. brainrots[name][1] .. "/sec - " .. brainrots[name][2])
+        if obj:IsA("Model") and not obj:FindFirstChild("ESPInfo") then
+            if espMythicEnabled and mythics[obj.Name] then
+                createTag(obj, obj.Name .. "\n" .. mythics[obj.Name][1] .. "/sec - " .. mythics[obj.Name][2], Color3.fromRGB(0, 255, 255))
+            elseif espBrainrotEnabled and brainrots[obj.Name] then
+                createTag(obj, obj.Name .. "\n" .. brainrots[obj.Name][1] .. "/sec - " .. brainrots[obj.Name][2], Color3.fromRGB(0, 0, 255))
             end
         end
     end
-
     if espPlayerEnabled then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and not p.Character:FindFirstChild("ESPPlayer") then
-                local highlight = Instance.new("Highlight", p.Character)
-                highlight.Name = "ESPPlayer"
-                highlight.FillColor = Color3.fromRGB(255, 255, 0)
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and not plr.Character:FindFirstChild("ESPPlayer") then
+                local h = Instance.new("Highlight", plr.Character)
+                h.Name = "ESPPlayer"
+                h.FillColor = Color3.fromRGB(255, 255, 0)
+                h.OutlineColor = Color3.new(1, 1, 1)
             end
         end
     end
 end)
 
---// Fling to Corner
-addButton("Fling to Corner", function()
+--// Speed
+local speedEnabled = false
+local function setSpeed(val)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = val
+    end
+end
+RunService.Stepped:Connect(function()
+    if speedEnabled then setSpeed(32) end
+end)
+
+--// Main GUI
+local screenGui = Instance.new("ScreenGui", game.CoreGui)
+screenGui.Name = "Mys2MainGui"
+
+local function makeFrame()
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 250, 0, 350)
+    frame.Position = UDim2.new(0, 20, 0, 100)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = screenGui
+
+    local layout = Instance.new("UIListLayout", frame)
+    layout.Padding = UDim.new(0, 5)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    return frame
+end
+
+local mainFrame = makeFrame()
+
+local function addButton(text, callback)
+    local btn = Instance.new("TextButton", mainFrame)
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.Text = text
+    btn.MouseButton1Click:Connect(function()
+        callback(btn)
+    end)
+end
+
+-- Buttons
+addButton("Speed Boost", function(btn)
+    speedEnabled = not speedEnabled
+    btn.Text = "Speed Boost: " .. (speedEnabled and "ON" or "OFF")
+end)
+
+addButton("TP Up", function()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = hrp.CFrame + Vector3.new(0, 15, 0) end
+end)
+
+addButton("TP Down", function()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = hrp.CFrame - Vector3.new(0, 15, 0) end
+end)
+
+addButton("Mythic ESP", function(btn)
+    espMythicEnabled = not espMythicEnabled
+    btn.Text = "Mythic ESP: " .. (espMythicEnabled and "ON" or "OFF")
+end)
+
+addButton("Brainrot ESP", function(btn)
+    espBrainrotEnabled = not espBrainrotEnabled
+    btn.Text = "Brainrot ESP: " .. (espBrainrotEnabled and "ON" or "OFF")
+end)
+
+addButton("Player ESP", function(btn)
+    espPlayerEnabled = not espPlayerEnabled
+    btn.Text = "Player ESP: " .. (espPlayerEnabled and "ON" or "OFF")
+end)
+
+addButton("Join Discord", function()
+    local popup = Instance.new("Frame", screenGui)
+    popup.Size = UDim2.new(0, 300, 0, 150)
+    popup.Position = UDim2.new(0.5, -150, 0.5, -75)
+    popup.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    popup.BorderSizePixel = 0
+
+    local label = Instance.new("TextLabel", popup)
+    label.Size = UDim2.new(1, 0, 0.6, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.Text = "Discord link copied to clipboard!\nYou can now close this window."
+    label.TextColor3 = Color3.new(1,1,1)
+    label.TextScaled = true
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+
+    local closeBtn = Instance.new("TextButton", popup)
+    closeBtn.Size = UDim2.new(0, 80, 0, 30)
+    closeBtn.Position = UDim2.new(1, -85, 1, -35)
+    closeBtn.Text = "Close"
+    closeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    closeBtn.TextColor3 = Color3.new(1,1,1)
+    closeBtn.Font = Enum.Font.Gotham
+    closeBtn.TextSize = 14
+    closeBtn.MouseButton1Click:Connect(function() popup:Destroy() end)
+
+    setclipboard("https://discord.gg/brainrots")
+end)
+
+--// Fling GUI
+local flingGui = Instance.new("ScreenGui", game.CoreGui)
+flingGui.Name = "Mys2FlingGui"
+
+local flingFrame = makeFrame()
+flingFrame.Parent = flingGui
+flingFrame.Position = UDim2.new(0, 280, 0, 100)
+
+local flingBtn = Instance.new("TextButton", flingFrame)
+flingBtn.Size = UDim2.new(1, -10, 0, 30)
+flingBtn.Position = UDim2.new(0, 5, 0, 0)
+flingBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
+flingBtn.Text = "Fling to Corner"
+flingBtn.TextColor3 = Color3.new(1, 1, 1)
+flingBtn.Font = Enum.Font.Gotham
+flingBtn.TextSize = 14
+flingBtn.MouseButton1Click:Connect(function()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if root then
         root.Velocity = Vector3.new(999, 999, 999)
         root.CFrame = CFrame.new(9999, 999, 9999)
     end
-end)
-
---// GUI Buttons
-addButton("Speed Boost", function(btn)
-    speedEnabled = not speedEnabled
-    btn.Text = "Speed Boost: " .. (speedEnabled and "ON" or "OFF")
-    if speedEnabled then
-        setSpeed(32)
-        hookWalkSpeed()
-        startSpeedEnforcement()
-    else
-        setSpeed(16)
-    end
-end)
-
-addButton("Toggle Mythic ESP", function(btn)
-    espMythicEnabled = not espMythicEnabled
-    btn.Text = "Mythic ESP: " .. (espMythicEnabled and "ON" or "OFF")
-end)
-
-addButton("Toggle Brainrot ESP", function(btn)
-    espBrainrotEnabled = not espBrainrotEnabled
-    btn.Text = "Brainrot ESP: " .. (espBrainrotEnabled and "ON" or "OFF")
-end)
-
-addButton("Toggle Player ESP", function(btn)
-    espPlayerEnabled = not espPlayerEnabled
-    btn.Text = "Player ESP: " .. (espPlayerEnabled and "ON" or "OFF")
-end)
-
---// Discord Button
-addButton("Join Discord", function()
-    setclipboard("https://discord.gg/brainrots")
-    StarterGui:SetCore("SendNotification", {
-        Title = "Copied!",
-        Text = "Copied Discord invite to clipboard. You can now close this window.",
-        Duration = 5
-    })
 end)
