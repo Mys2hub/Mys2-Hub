@@ -1,4 +1,4 @@
--- Mys2 Hub | Xeno-Compatible GUI (ESP Updated with Brainrot Gods & Mythics)
+-- Mys2 Hub | Xeno-Compatible GUI (Full Script with ESP for Brainrot Gods & Mythics)
 
 local player = game.Players.LocalPlayer
 repeat wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -17,7 +17,106 @@ local desiredSpeed = 90
 local discordInvite = "https://discord.gg/spnTPXSvMk"
 local discordWebhook = "https://discord.com/api/webhooks/1396066702965346316/NDb7LEGDE9b5y3ymYEyuJcJdfOm8xotkuGNVsqTbfxkFmH4PKEsRc5GWaROkA8iZBqU6"
 
--- ESP Data Tables
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "Mys2Hub"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 500)
+frame.Position = UDim2.new(0, 20, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+title.Text = "Mys2 Hub"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+
+local nextButtonY = 40
+function autoToggle(name, callback)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, nextButtonY)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.Text = name .. ": OFF"
+
+    local enabled = false
+    btn.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        btn.Text = name .. ": " .. (enabled and "ON" or "OFF")
+        callback(enabled)
+    end)
+
+    nextButtonY = nextButtonY + 40
+end
+
+function autoButton(name, callback)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, nextButtonY)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.Text = name
+    btn.MouseButton1Click:Connect(callback)
+
+    nextButtonY = nextButtonY + 40
+end
+
+local speedConnection
+local function enforceSpeed()
+    if speedEnabled and humanoid and humanoid.Parent then
+        humanoid.WalkSpeed = desiredSpeed
+    elseif humanoid then
+        humanoid.WalkSpeed = 16
+    end
+end
+
+local function startSpeedEnforcement()
+    if speedConnection then speedConnection:Disconnect() end
+    speedConnection = RunService.Heartbeat:Connect(enforceSpeed)
+end
+
+local function stopSpeedEnforcement()
+    if speedConnection then
+        speedConnection:Disconnect()
+        speedConnection = nil
+    end
+    if humanoid then humanoid.WalkSpeed = 16 end
+end
+
+local function tpUp()
+    if hrp then hrp.CFrame = CFrame.new(hrp.Position.X, 300, hrp.Position.Z) end
+end
+
+local function tpDown()
+    if hrp then hrp.CFrame = CFrame.new(hrp.Position.X, 10, hrp.Position.Z) end
+end
+
+local function teleportToClosest()
+    local closest, dist = nil, math.huge
+    for _, other in pairs(game.Players:GetPlayers()) do
+        if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then dist = d closest = other end
+        end
+    end
+    if closest then hrp.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0) end
+end
+
+-- ESP Setup
+local Drawing = Drawing
+local espEnabled, godsESPEnabled, mythicsESPEnabled = false, false, false
+local espBoxes, godESPLabels, mythicESPLabels = {}, {}, {}
+
 local mythicRates = {
     ["Frigo Camelo"] = "1.2K$/sec — Sells for 300K",
     ["Orangutini Ananassini"] = "1.7K$/sec — Sells for 400K",
@@ -45,27 +144,17 @@ local brainrotGodRates = {
     ["Orcalero Orcala"] = "100K$/sec — Sells for 15M"
 }
 
--- ESP Drawings
-local Drawing = Drawing
-local espEnabled, godsESPEnabled, mythicsESPEnabled = false, false, false
-local espBoxes, godESPLabels, mythicESPLabels = {}, {}, {}
-
 local function createBox()
     local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.new(1, 0, 0)
-    box.Thickness = 1
-    box.Filled = false
+    box.Visible = false box.Color = Color3.new(1, 0, 0)
+    box.Thickness = 1 box.Filled = false
     return box
 end
 
 local function createLabel(color)
     local label = Drawing.new("Text")
-    label.Size = 16
-    label.Center = true
-    label.Outline = true
-    label.Visible = false
-    label.Color = color or Color3.new(1, 1, 1)
+    label.Size = 16 label.Center = true label.Outline = true
+    label.Visible = false label.Color = color or Color3.new(1, 1, 1)
     return label
 end
 
@@ -81,12 +170,8 @@ RunService.RenderStepped:Connect(function()
                     box.Position = Vector2.new(pos.X - 25, pos.Y - 25)
                     box.Size = Vector2.new(50, 50)
                     box.Visible = true
-                else
-                    box.Visible = false
-                end
-            else
-                box.Visible = false
-            end
+                else box.Visible = false end
+            else box.Visible = false end
         end
     end
 
@@ -102,9 +187,7 @@ RunService.RenderStepped:Connect(function()
                 label.Text = name .. " — " .. mythicRates[name]
                 label.Position = Vector2.new(pos.X, pos.Y - 30)
                 label.Visible = onscreen
-            elseif mythicESPLabels[npc] then
-                mythicESPLabels[npc].Visible = false
-            end
+            elseif mythicESPLabels[npc] then mythicESPLabels[npc].Visible = false end
 
             if godsESPEnabled and brainrotGodRates[name] then
                 if not godESPLabels[npc] then godESPLabels[npc] = createLabel(Color3.new(0, 0.7, 1)) end
@@ -112,14 +195,17 @@ RunService.RenderStepped:Connect(function()
                 label.Text = name .. " — " .. brainrotGodRates[name]
                 label.Position = Vector2.new(pos.X, pos.Y - 30)
                 label.Visible = onscreen
-            elseif godESPLabels[npc] then
-                godESPLabels[npc].Visible = false
-            end
+            elseif godESPLabels[npc] then godESPLabels[npc].Visible = false end
         end
     end
 end)
 
--- GUI Button Registration (add to your existing button setup)
+-- Button Toggles
+autoToggle("Speed", function(enabled)
+    speedEnabled = enabled
+    if enabled then startSpeedEnforcement() else stopSpeedEnforcement() end
+end)
+
 autoToggle("Player ESP", function(enabled)
     espEnabled = enabled
 end)
@@ -131,3 +217,74 @@ end)
 autoToggle("Brainrot Gods ESP", function(enabled)
     godsESPEnabled = enabled
 end)
+
+autoButton("TP Up", tpUp)
+autoButton("TP Down", tpDown)
+autoButton("TP Closest Player", teleportToClosest)
+autoButton("Server Hop", function() print("Server hopping... (not implemented)") end)
+
+-- Discord Notification
+local function sendDiscordWebhookNotification()
+    local data = {
+        content = "**Mys2 Hub script loaded**\nUser: " .. player.Name,
+        username = "Mys2 Hub Bot"
+    }
+    local success, err = pcall(function()
+        HttpService:PostAsync(discordWebhook, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
+    end)
+    if not success then warn("Failed to send Discord webhook: " .. tostring(err)) end
+end
+
+local function showDiscordPopup()
+    local popupGui = Instance.new("ScreenGui", game.CoreGui)
+    popupGui.Name = "DiscordInvitePopup"
+    local popupFrame = Instance.new("Frame", popupGui)
+    popupFrame.Size = UDim2.new(0, 300, 0, 150)
+    popupFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    popupFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    popupFrame.BorderSizePixel = 0
+    popupFrame.Active = true
+    popupFrame.Draggable = true
+    local title = Instance.new("TextLabel", popupFrame)
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.BackgroundTransparency = 1
+    title.Text = "Script Update Available!"
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    local message = Instance.new("TextLabel", popupFrame)
+    message.Size = UDim2.new(1, -20, 0, 70)
+    message.Position = UDim2.new(0, 10, 0, 40)
+    message.BackgroundTransparency = 1
+    message.TextWrapped = true
+    message.Text = "A new script update is available.\nJoin our Discord server to stay updated and get support!"
+    message.TextColor3 = Color3.new(1, 1, 1)
+    message.Font = Enum.Font.Gotham
+    message.TextSize = 14
+    local inviteButton = Instance.new("TextButton", popupFrame)
+    inviteButton.Size = UDim2.new(0, 200, 0, 30)
+    inviteButton.Position = UDim2.new(0.5, -100, 1, -50)
+    inviteButton.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+    inviteButton.Text = "Join Discord"
+    inviteButton.TextColor3 = Color3.new(1, 1, 1)
+    inviteButton.Font = Enum.Font.GothamBold
+    inviteButton.TextSize = 16
+    local closeButton = Instance.new("TextButton", popupFrame)
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -35, 0, 5)
+    closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeButton.Text = "X"
+    closeButton.TextColor3 = Color3.new(1, 1, 1)
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.TextSize = 18
+    inviteButton.MouseButton1Click:Connect(function()
+        if setclipboard then setclipboard(discordInvite) end
+        print("Discord invite copied to clipboard!")
+    end)
+    closeButton.MouseButton1Click:Connect(function()
+        popupGui:Destroy()
+    end)
+end
+
+sendDiscordWebhookNotification()
+showDiscordPopup()
