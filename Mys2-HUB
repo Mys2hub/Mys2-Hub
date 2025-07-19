@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 local speedEnabled = getgenv()._speedToggle or false
 local desiredSpeed = 90
@@ -85,8 +86,7 @@ local function showDiscordPopup()
         if setclipboard then
             setclipboard(discordInvite)
         end
-        inviteButton.Text = "Discord link copied! You can close this now."
-        inviteButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Slightly changed color to show success
+        print("Discord invite copied to clipboard! You can close this now.")
     end)
 
     closeButton.MouseButton1Click:Connect(function()
@@ -231,6 +231,45 @@ local function teleportToClosest()
     end
 end
 
+-- Server Hop
+autoButton("Server Hop", function()
+    local placeId = game.PlaceId
+    local currentJobId = game.JobId
+
+    local cursor = nil
+
+    local function getServers()
+        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(placeId)
+        if cursor then
+            url = url .. "&cursor=" .. cursor
+        end
+        local response = HttpService:GetAsync(url)
+        local data = HttpService:JSONDecode(response)
+        cursor = data.nextPageCursor
+        return data.data
+    end
+
+    local function findServer()
+        repeat
+            local serverList = getServers()
+            for _, server in ipairs(serverList) do
+                if server.playing < server.maxPlayers and server.id ~= currentJobId then
+                    return server.id
+                end
+            end
+        until not cursor
+        return nil
+    end
+
+    local serverId = findServer()
+    if serverId then
+        TeleportService:TeleportToPlaceInstance(placeId, serverId, player)
+        print("Server hopping to server ID:", serverId)
+    else
+        print("No suitable server found to hop to.")
+    end
+end)
+
 -- ESP Logic
 
 local espMythicEnabled = false
@@ -373,7 +412,13 @@ local function createBoxForPlayer(plr)
     return box
 end
 
+local playerEspConnection
 local function updatePlayerESP()
+    if playerEspConnection then
+        playerEspConnection:Disconnect()
+        playerEspConnection = nil
+    end
+
     for _, plr in pairs(game.Players:GetPlayers()) do
         if plr ~= player then
             if not espBoxes[plr] then
@@ -382,7 +427,7 @@ local function updatePlayerESP()
         end
     end
 
-    RunService.RenderStepped:Connect(function()
+    playerEspConnection = RunService.RenderStepped:Connect(function()
         if not espPlayerEnabled then
             for _, box in pairs(espBoxes) do
                 box.Visible = false
@@ -392,102 +437,7 @@ local function updatePlayerESP()
 
         for plr, box in pairs(espBoxes) do
             local char = plr.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp and hrp.Parent then
-                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                if onScreen then
-                    box.Position = Vector2.new(screenPos.X - box.Size / 2, screenPos.Y - box.Size / 2)
-                    box.Size = 50
-                    box.Visible = true
-                else
-                    box.Visible = false
-                end
-            else
-                box.Visible = false
-            end
-        end
-    end)
-end
+            local hrpPlr = char and char:FindFirstChild("HumanoidRootPart")
+            if hrpPlr and hrpPlr.Parent then
+                local screenPos
 
--- GUI Buttons
-autoToggle("Speed", function(enabled)
-    speedEnabled = enabled
-    if enabled then
-        startSpeedEnforcement()
-        hookWalkSpeed()
-    else
-        stopSpeedEnforcement()
-    end
-end)
-
-autoToggle("Player ESP", function(enabled)
-    espPlayerEnabled = enabled
-    if enabled then
-        updatePlayerESP()
-    else
-        for _, box in pairs(espBoxes) do
-            box.Visible = false
-        end
-    end
-end)
-
-autoToggle("Mythic ESP", function(state)
-    espMythicEnabled = state
-    if not state then
-        clearESP()
-    end
-end)
-
-autoToggle("Brainrot God ESP", function(state)
-    espBrainrotEnabled = state
-    if not state then
-        clearESP()
-    end
-end)
-
-autoButton("TP Up", tpUp)
-autoButton("TP Down", tpDown)
-autoButton("TP Closest Player", teleportToClosest)
-
-autoButton("Server Hop", function()
-    local HttpService = game:GetService("HttpService")
-    local TeleportService = game:GetService("TeleportService")
-    local placeId = game.PlaceId
-    local currentJobId = game.JobId
-
-    local cursor = nil
-
-    local function getServers()
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(placeId)
-        if cursor then
-            url = url .. "&cursor=" .. cursor
-        end
-        local response = HttpService:GetAsync(url)
-        local data = HttpService:JSONDecode(response)
-        cursor = data.nextPageCursor
-        return data.data
-    end
-
-    local function findServer()
-        repeat
-            local serverList = getServers()
-            for _, server in ipairs(serverList) do
-                if server.playing < server.maxPlayers and server.id ~= currentJobId then
-                    return server.id
-                end
-            end
-        until not cursor
-        return nil
-    end
-
-    local serverId = findServer()
-    if serverId then
-        TeleportService:TeleportToPlaceInstance(placeId, serverId, player)
-        print("Server hopping to server ID:", serverId)
-    else
-        print("No suitable server found to hop to.")
-    end
-end)
-
-sendDiscordWebhookNotification()
-showDiscordPopup()
