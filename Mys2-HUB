@@ -1,4 +1,4 @@
--- Mys2 Hub | Xeno-Compatible GUI (Full Script with ESP for Brainrot Gods & Mythics)
+-- Mys2 Hub | Xeno-Compatible GUI (Optimized Brainrot Gods & Mythics ESP)
 
 local player = game.Players.LocalPlayer
 repeat wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -8,15 +8,16 @@ local humanoid = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Hu
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
-local speedEnabled = getgenv()._speedToggle or false
+local speedEnabled = false
 local desiredSpeed = 90
 
+-- Discord Integration
 local discordInvite = "https://discord.gg/spnTPXSvMk"
 local discordWebhook = "https://discord.com/api/webhooks/1396066702965346316/NDb7LEGDE9b5y3ymYEyuJcJdfOm8xotkuGNVsqTbfxkFmH4PKEsRc5GWaROkA8iZBqU6"
 
+-- GUI Setup
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "Mys2Hub"
 
@@ -71,7 +72,9 @@ function autoButton(name, callback)
     nextButtonY = nextButtonY + 40
 end
 
+-- Speed logic
 local speedConnection
+
 local function enforceSpeed()
     if speedEnabled and humanoid and humanoid.Parent then
         humanoid.WalkSpeed = desiredSpeed
@@ -90,15 +93,23 @@ local function stopSpeedEnforcement()
         speedConnection:Disconnect()
         speedConnection = nil
     end
-    if humanoid then humanoid.WalkSpeed = 16 end
+    if humanoid then
+        humanoid.WalkSpeed = 16
+    end
 end
 
 local function tpUp()
-    if hrp then hrp.CFrame = CFrame.new(hrp.Position.X, 300, hrp.Position.Z) end
+    if hrp then
+        local pos = hrp.Position
+        hrp.CFrame = CFrame.new(pos.X, 300, pos.Z)
+    end
 end
 
 local function tpDown()
-    if hrp then hrp.CFrame = CFrame.new(hrp.Position.X, 10, hrp.Position.Z) end
+    if hrp then
+        local pos = hrp.Position
+        hrp.CFrame = CFrame.new(pos.X, 10, pos.Z)
+    end
 end
 
 local function teleportToClosest()
@@ -106,17 +117,31 @@ local function teleportToClosest()
     for _, other in pairs(game.Players:GetPlayers()) do
         if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
             local d = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then dist = d closest = other end
+            if d < dist then
+                dist = d
+                closest = other
+            end
         end
     end
-    if closest then hrp.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0) end
+    if closest then
+        hrp.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
+    end
 end
 
--- ESP Setup
-local Drawing = Drawing
-local espEnabled, godsESPEnabled, mythicsESPEnabled = false, false, false
-local espBoxes, godESPLabels, mythicESPLabels = {}, {}, {}
+-- Player ESP Setup
+local espEnabled = false
+local espBoxes = {}
 
+local function createBoxForPlayer(plr)
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = Color3.new(1, 0, 0)
+    box.Thickness = 1
+    box.Filled = false
+    return box
+end
+
+-- Improved Mythics and Brainrot Gods ESP (optimized for lag and correctness)
 local mythicRates = {
     ["Frigo Camelo"] = "1.2K$/sec — Sells for 300K",
     ["Orangutini Ananassini"] = "1.7K$/sec — Sells for 400K",
@@ -144,70 +169,161 @@ local brainrotGodRates = {
     ["Orcalero Orcala"] = "100K$/sec — Sells for 15M"
 }
 
-local function createBox()
-    local box = Drawing.new("Square")
-    box.Visible = false box.Color = Color3.new(1, 0, 0)
-    box.Thickness = 1 box.Filled = false
-    return box
-end
+local mythicsESPEnabled = false
+local godsESPEnabled = false
+local mythicLabels = {}
+local godLabels = {}
 
 local function createLabel(color)
     local label = Drawing.new("Text")
-    label.Size = 16 label.Center = true label.Outline = true
-    label.Visible = false label.Color = color or Color3.new(1, 1, 1)
+    label.Size = 16
+    label.Center = true
+    label.Outline = true
+    label.Visible = false
+    label.Color = color
     return label
 end
 
+local function addESPLabel(npc, text, color, labelTable)
+    if labelTable[npc] then return end
+    local label = createLabel(color)
+    label.Text = text
+    labelTable[npc] = label
+end
+
+local function removeESPLabel(npc, labelTable)
+    local label = labelTable[npc]
+    if label then
+        label.Visible = false
+        label:Remove()
+        labelTable[npc] = nil
+    end
+end
+
+local function scanForNPCs()
+    for _, npc in pairs(Workspace:GetChildren()) do
+        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
+            local name = npc.Name
+            if mythicRates[name] and mythicsESPEnabled and not mythicLabels[npc] then
+                addESPLabel(npc, name .. " — " .. mythicRates[name], Color3.new(1, 0, 1), mythicLabels)
+            elseif brainrotGodRates[name] and godsESPEnabled and not godLabels[npc] then
+                addESPLabel(npc, name .. " — " .. brainrotGodRates[name], Color3.new(0, 0.7, 1), godLabels)
+            end
+        end
+    end
+end
+
+local function cleanupLabels()
+    for npc in pairs(mythicLabels) do
+        if not npc.Parent or not mythicsESPEnabled then
+            removeESPLabel(npc, mythicLabels)
+        end
+    end
+    for npc in pairs(godLabels) do
+        if not npc.Parent or not godsESPEnabled then
+            removeESPLabel(npc, godLabels)
+        end
+    end
+end
+
+-- Update ESP labels positions every frame
 RunService.RenderStepped:Connect(function()
-    for _, plr in pairs(game.Players:GetPlayers()) do
-        if plr ~= player then
-            if not espBoxes[plr] then espBoxes[plr] = createBox() end
-            local box = espBoxes[plr]
-            local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-            if espEnabled and hrp then
-                local pos, onscreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                if onscreen then
-                    box.Position = Vector2.new(pos.X - 25, pos.Y - 25)
+    if espEnabled then
+        -- Player ESP
+        for plr, box in pairs(espBoxes) do
+            local char = plr.Character
+            local hrpPlr = char and char:FindFirstChild("HumanoidRootPart")
+            if hrpPlr and hrpPlr.Parent then
+                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrpPlr.Position)
+                if onScreen then
+                    box.Position = Vector2.new(screenPos.X - 25, screenPos.Y - 25)
                     box.Size = Vector2.new(50, 50)
                     box.Visible = true
-                else box.Visible = false end
-            else box.Visible = false end
+                else
+                    box.Visible = false
+                end
+            else
+                box.Visible = false
+            end
+        end
+    else
+        for _, box in pairs(espBoxes) do
+            box.Visible = false
         end
     end
 
-    for _, npc in pairs(Workspace:GetDescendants()) do
-        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-            local name = npc.Name
-            local hrp = npc.HumanoidRootPart
-            local pos, onscreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+    -- Mythics and Gods ESP
+    if mythicsESPEnabled or godsESPEnabled then
+        scanForNPCs()
+        cleanupLabels()
 
-            if mythicsESPEnabled and mythicRates[name] then
-                if not mythicESPLabels[npc] then mythicESPLabels[npc] = createLabel(Color3.new(1, 0, 1)) end
-                local label = mythicESPLabels[npc]
-                label.Text = name .. " — " .. mythicRates[name]
-                label.Position = Vector2.new(pos.X, pos.Y - 30)
-                label.Visible = onscreen
-            elseif mythicESPLabels[npc] then mythicESPLabels[npc].Visible = false end
-
-            if godsESPEnabled and brainrotGodRates[name] then
-                if not godESPLabels[npc] then godESPLabels[npc] = createLabel(Color3.new(0, 0.7, 1)) end
-                local label = godESPLabels[npc]
-                label.Text = name .. " — " .. brainrotGodRates[name]
-                label.Position = Vector2.new(pos.X, pos.Y - 30)
-                label.Visible = onscreen
-            elseif godESPLabels[npc] then godESPLabels[npc].Visible = false end
+        for npc, label in pairs(mythicLabels) do
+            if npc and npc.Parent then
+                local hrpNPC = npc:FindFirstChild("HumanoidRootPart")
+                if hrpNPC then
+                    local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrpNPC.Position)
+                    if onScreen then
+                        label.Position = Vector2.new(pos.X, pos.Y - 30)
+                        label.Visible = true
+                    else
+                        label.Visible = false
+                    end
+                else
+                    label.Visible = false
+                end
+            else
+                removeESPLabel(npc, mythicLabels)
+            end
         end
+
+        for npc, label in pairs(godLabels) do
+            if npc and npc.Parent then
+                local hrpNPC = npc:FindFirstChild("HumanoidRootPart")
+                if hrpNPC then
+                    local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrpNPC.Position)
+                    if onScreen then
+                        label.Position = Vector2.new(pos.X, pos.Y - 30)
+                        label.Visible = true
+                    else
+                        label.Visible = false
+                    end
+                else
+                    label.Visible = false
+                end
+            else
+                removeESPLabel(npc, godLabels)
+            end
+        end
+    else
+        for npc in pairs(mythicLabels) do removeESPLabel(npc, mythicLabels) end
+        for npc in pairs(godLabels) do removeESPLabel(npc, godLabels) end
     end
 end)
 
--- Button Toggles
+-- GUI Buttons
 autoToggle("Speed", function(enabled)
     speedEnabled = enabled
-    if enabled then startSpeedEnforcement() else stopSpeedEnforcement() end
+    if enabled then
+        startSpeedEnforcement()
+    else
+        stopSpeedEnforcement()
+    end
 end)
 
 autoToggle("Player ESP", function(enabled)
     espEnabled = enabled
+    -- Initialize boxes for all players on toggle ON
+    if enabled then
+        for _, plr in pairs(game.Players:GetPlayers()) do
+            if plr ~= player and not espBoxes[plr] then
+                espBoxes[plr] = createBoxForPlayer(plr)
+            end
+        end
+    else
+        for _, box in pairs(espBoxes) do
+            box.Visible = false
+        end
+    end
 end)
 
 autoToggle("Mythics ESP", function(enabled)
@@ -221,23 +337,30 @@ end)
 autoButton("TP Up", tpUp)
 autoButton("TP Down", tpDown)
 autoButton("TP Closest Player", teleportToClosest)
-autoButton("Server Hop", function() print("Server hopping... (not implemented)") end)
+autoButton("Server Hop", function()
+    print("Server hopping... (feature needs implementation)")
+end)
 
--- Discord Notification
+-- Discord webhook & popup
 local function sendDiscordWebhookNotification()
     local data = {
         content = "**Mys2 Hub script loaded**\nUser: " .. player.Name,
         username = "Mys2 Hub Bot"
     }
+
     local success, err = pcall(function()
         HttpService:PostAsync(discordWebhook, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
     end)
-    if not success then warn("Failed to send Discord webhook: " .. tostring(err)) end
+
+    if not success then
+        warn("Failed to send Discord webhook: " .. tostring(err))
+    end
 end
 
 local function showDiscordPopup()
     local popupGui = Instance.new("ScreenGui", game.CoreGui)
     popupGui.Name = "DiscordInvitePopup"
+
     local popupFrame = Instance.new("Frame", popupGui)
     popupFrame.Size = UDim2.new(0, 300, 0, 150)
     popupFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
@@ -245,6 +368,7 @@ local function showDiscordPopup()
     popupFrame.BorderSizePixel = 0
     popupFrame.Active = true
     popupFrame.Draggable = true
+
     local title = Instance.new("TextLabel", popupFrame)
     title.Size = UDim2.new(1, 0, 0, 30)
     title.BackgroundTransparency = 1
@@ -252,6 +376,7 @@ local function showDiscordPopup()
     title.TextColor3 = Color3.new(1, 1, 1)
     title.Font = Enum.Font.GothamBold
     title.TextSize = 18
+
     local message = Instance.new("TextLabel", popupFrame)
     message.Size = UDim2.new(1, -20, 0, 70)
     message.Position = UDim2.new(0, 10, 0, 40)
@@ -261,6 +386,7 @@ local function showDiscordPopup()
     message.TextColor3 = Color3.new(1, 1, 1)
     message.Font = Enum.Font.Gotham
     message.TextSize = 14
+
     local inviteButton = Instance.new("TextButton", popupFrame)
     inviteButton.Size = UDim2.new(0, 200, 0, 30)
     inviteButton.Position = UDim2.new(0.5, -100, 1, -50)
@@ -269,6 +395,7 @@ local function showDiscordPopup()
     inviteButton.TextColor3 = Color3.new(1, 1, 1)
     inviteButton.Font = Enum.Font.GothamBold
     inviteButton.TextSize = 16
+
     local closeButton = Instance.new("TextButton", popupFrame)
     closeButton.Size = UDim2.new(0, 30, 0, 30)
     closeButton.Position = UDim2.new(1, -35, 0, 5)
@@ -277,10 +404,14 @@ local function showDiscordPopup()
     closeButton.TextColor3 = Color3.new(1, 1, 1)
     closeButton.Font = Enum.Font.GothamBold
     closeButton.TextSize = 18
+
     inviteButton.MouseButton1Click:Connect(function()
-        if setclipboard then setclipboard(discordInvite) end
+        if setclipboard then
+            setclipboard(discordInvite)
+        end
         print("Discord invite copied to clipboard!")
     end)
+
     closeButton.MouseButton1Click:Connect(function()
         popupGui:Destroy()
     end)
