@@ -132,7 +132,6 @@ function autoToggle(name, callback)
     end)
 
     nextButtonY = nextButtonY + 40
-    return btn
 end
 
 function autoButton(name, callback)
@@ -360,7 +359,7 @@ RunService.RenderStepped:Connect(function(delta)
     end
 end)
 
--- Player ESP (fixed)
+-- Player ESP (simpler box ESP)
 local espPlayerEnabled = false
 local espBoxes = {}
 
@@ -373,129 +372,46 @@ local function createBoxForPlayer(plr)
     return box
 end
 
-local playerESPConnection
-
-local function updatePlayerESP(enabled)
-    if playerESPConnection then
-        playerESPConnection:Disconnect()
-        playerESPConnection = nil
-    end
-
-    if enabled then
-        -- Ensure we create boxes for current players
-        for _, plr in pairs(game.Players:GetPlayers()) do
-            if plr ~= player and not espBoxes[plr] then
+local function updatePlayerESP()
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= player then
+            if not espBoxes[plr] then
                 espBoxes[plr] = createBoxForPlayer(plr)
             end
         end
+    end
 
-        playerESPConnection = RunService.RenderStepped:Connect(function()
-            for plr, box in pairs(espBoxes) do
-                if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = plr.Character.HumanoidRootPart
-                    local cam = workspace.CurrentCamera
-                    local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
-                    if onScreen then
-                        box.Position = Vector2.new(screenPos.X - box.Size/2, screenPos.Y - box.Size/2)
-                        box.Size = 50
-                        box.Visible = true
-                    else
-                        box.Visible = false
-                    end
-                else
-                    if box then
-                        box.Visible = false
-                    end
-                end
+    RunService.RenderStepped:Connect(function()
+        if not espPlayerEnabled then
+            for _, box in pairs(espBoxes) do
+                box.Visible = false
             end
-        end)
-    else
-        for _, box in pairs(espBoxes) do
-            box.Visible = false
+            return
         end
-        espBoxes = {}
-    end
+
+        for plr, box in pairs(espBoxes) do
+            local char = plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp and hrp.Parent then
+                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    box.Position = Vector2.new(screenPos.X - box.Size / 2, screenPos.Y - box.Size / 2)
+                    box.Size = 50
+                    box.Visible = true
+                else
+                    box.Visible = false
+                end
+            else
+                box.Visible = false
+            end
+        end
+    end)
 end
 
--- Fling to Corner GUI
-
-local flingGui = Instance.new("ScreenGui", game.CoreGui)
-flingGui.Name = "Mys2FlingGui"
-flingGui.Enabled = false
-
-local flingFrame = Instance.new("Frame", flingGui)
-flingFrame.Size = UDim2.new(0, 200, 0, 120)
-flingFrame.Position = UDim2.new(0, 230, 0, 100)
-flingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-flingFrame.BorderSizePixel = 0
-flingFrame.Active = true
-flingFrame.Draggable = true
-
-local flingTitle = Instance.new("TextLabel", flingFrame)
-flingTitle.Size = UDim2.new(1, 0, 0, 30)
-flingTitle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-flingTitle.Text = "Fling to Corner"
-flingTitle.TextColor3 = Color3.new(1, 1, 1)
-flingTitle.Font = Enum.Font.GothamBold
-flingTitle.TextSize = 16
-
-local flingToggle = Instance.new("TextButton", flingFrame)
-flingToggle.Size = UDim2.new(1, -20, 0, 40)
-flingToggle.Position = UDim2.new(0, 10, 0, 40)
-flingToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-flingToggle.TextColor3 = Color3.new(1, 1, 1)
-flingToggle.Font = Enum.Font.Gotham
-flingToggle.TextSize = 14
-flingToggle.Text = "Enable Fling"
-local flingEnabled = false
-
-local flingConnection
-
-local function flingToCorner()
-    if not flingEnabled then return end
-    if hrp then
-        hrp.CFrame = CFrame.new(-650, 300, -700)
-    end
-end
-
-flingToggle.MouseButton1Click:Connect(function()
-    flingEnabled = not flingEnabled
-    flingToggle.Text = flingEnabled and "Disable Fling" or "Enable Fling"
-    if flingEnabled then
-        flingConnection = RunService.Heartbeat:Connect(flingToCorner)
-    else
-        if flingConnection then
-            flingConnection:Disconnect()
-            flingConnection = nil
-        end
-    end
-end)
-
--- Add toggle button on main GUI for fling
-
-local flingButton = autoToggle("Fling to Corner", function(state)
-    flingGui.Enabled = state
-    if state then
-        flingToggle.Text = "Enable Fling"
-        flingEnabled = false
-        if flingConnection then
-            flingConnection:Disconnect()
-            flingConnection = nil
-        end
-    else
-        flingEnabled = false
-        if flingConnection then
-            flingConnection:Disconnect()
-            flingConnection = nil
-        end
-    end
-end)
-
--- Main toggles
-
-autoToggle("Speed", function(state)
-    speedEnabled = state
-    if state then
+-- GUI Buttons
+autoToggle("Speed", function(enabled)
+    speedEnabled = enabled
+    if enabled then
         startSpeedEnforcement()
         hookWalkSpeed()
     else
@@ -503,26 +419,38 @@ autoToggle("Speed", function(state)
     end
 end)
 
+autoToggle("Player ESP", function(enabled)
+    espPlayerEnabled = enabled
+    if enabled then
+        updatePlayerESP()
+    else
+        for _, box in pairs(espBoxes) do
+            box.Visible = false
+        end
+    end
+end)
+
 autoToggle("Mythic ESP", function(state)
     espMythicEnabled = state
-    if not state then clearESP() end
+    if not state then
+        clearESP()
+    end
 end)
 
 autoToggle("Brainrot God ESP", function(state)
     espBrainrotEnabled = state
-    if not state then clearESP() end
+    if not state then
+        clearESP()
+    end
 end)
 
-autoToggle("Player ESP", function(state)
-    espPlayerEnabled = state
-    updatePlayerESP(state)
+autoButton("TP Up", tpUp)
+autoButton("TP Down", tpDown)
+autoButton("TP Closest Player", teleportToClosest)
+
+autoButton("Server Hop", function()
+    print("Server hopping... (feature needs implementation)")
 end)
 
-autoButton("Teleport Up", tpUp)
-autoButton("Teleport Down", tpDown)
-autoButton("Teleport to Closest Player", teleportToClosest)
-
--- Send Discord webhook and show popup
 sendDiscordWebhookNotification()
 showDiscordPopup()
-
