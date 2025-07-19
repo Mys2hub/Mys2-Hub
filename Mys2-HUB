@@ -93,12 +93,12 @@ local function showDiscordPopup()
     end)
 end
 
--- GUI Setup
+-- GUI Setup for Mys2 Hub
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "Mys2Hub"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 440)
+frame.Size = UDim2.new(0, 200, 0, 400)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
@@ -230,180 +230,267 @@ local function teleportToClosest()
     end
 end
 
--- Player ESP logic (simplified, existing code)
-local espEnabled = false
-local espBoxes = {}
-
-local function createBoxForPlayer(plr)
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.new(1, 0, 0)
-    box.Thickness = 1
-    box.Filled = false
-    return box
-end
-
-local function updatePlayerESP()
-    for _, plr in pairs(game.Players:GetPlayers()) do
-        if plr ~= player then
-            if not espBoxes[plr] then
-                espBoxes[plr] = createBoxForPlayer(plr)
-            end
-        end
-    end
-end
-
-RunService.RenderStepped:Connect(function()
-    if not espEnabled then
-        for _, box in pairs(espBoxes) do
-            box.Visible = false
-        end
-        return
-    end
-
-    for plr, box in pairs(espBoxes) do
-        local char = plr.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp and hrp.Parent then
-            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-            if onScreen then
-                box.Position = Vector2.new(screenPos.X - box.Size / 2, screenPos.Y - box.Size / 2)
-                box.Size = 50
-                box.Visible = true
-            else
-                box.Visible = false
-            end
-        else
-            box.Visible = false
-        end
-    end
-end)
-
--- Mythics and Brainrot Gods ESP optimized
+-- ESP Data tables
+local brainrotGodRates = {
+    ["Cocofanto Elefanto"] = {moneyPerSec = "10K", sellsFor = "5M"},
+    ["Girafa Celestre"] = {moneyPerSec = "20K", sellsFor = "7.5M"},
+    ["Gattatino Neonino"] = {moneyPerSec = "35K", sellsFor = "7.5M"},
+    ["Matteo"] = {moneyPerSec = "50K", sellsFor = "10M"},
+    ["Tralalero Tralala"] = {moneyPerSec = "50K", sellsFor = "10M"},
+    ["Espresso Signora"] = {moneyPerSec = "70K", sellsFor = "25M"},
+    ["Odin Din Din Dun"] = {moneyPerSec = "75K", sellsFor = "15M"},
+    ["Statutino Libertino"] = {moneyPerSec = "75K", sellsFor = "20M"},
+    ["Trenostruzzo Turbo 3000"] = {moneyPerSec = "150K", sellsFor = "25M"},
+    ["Ballerino Lololo"] = {moneyPerSec = "200K", sellsFor = "35M"},
+    ["Tigroligre Frutonni"] = {moneyPerSec = "60K", sellsFor = "15M"},
+    ["Orcalero Orcala"] = {moneyPerSec = "100K", sellsFor = "15M"},
+}
 
 local mythicRates = {
-    ["Frigo Camelo"] = "1.2K$/sec — Sells for 300K",
-    ["Orangutini Ananassini"] = "1.7K$/sec — Sells for 400K",
-    ["Rhino Toasterino"] = "2.1K$/sec — Sells for 450K",
-    ["Bombardiro Crocodilo"] = "2.5K$/sec — Sells for 500K",
-    ["Bombombini Gusini"] = "5K$/sec — Sells for 1M",
-    ["Cavallo Virtuoso"] = "7.5K$/sec — Sells for 2.5M",
-    ["Spioniro Golubiro"] = "3.5K$/sec — Sells for 750K",
-    ["Zibra Zubra Zibralini"] = "6K$/sec — Sells for 1M",
-    ["Tigrilini Watermelini"] = "7.5K$/sec — Sells for 1M"
+    ["Frigo Camelo"] = {moneyPerSec = "1.2K", sellsFor = "300K"},
+    ["Orangutini Ananassini"] = {moneyPerSec = "1.7K", sellsFor = "400K"},
+    ["Rhino Toasterino"] = {moneyPerSec = "2.1K", sellsFor = "450K"},
+    ["Bombardiro Crocodilo"] = {moneyPerSec = "2.5K", sellsFor = "500K"},
+    ["Bombombini Gusini"] = {moneyPerSec = "5K", sellsFor = "1M"},
+    ["Cavallo Virtuoso"] = {moneyPerSec = "7.5K", sellsFor = "2.5M"},
+    ["Spioniro Golubiro"] = {moneyPerSec = "3.5K", sellsFor = "750K"},
+    ["Zibra Zubra Zibralini"] = {moneyPerSec = "6K", sellsFor = "1M"},
+    ["Tigrilini Watermelini"] = {moneyPerSec = "7.5K", sellsFor = "1M"},
 }
 
-local brainrotGodRates = {
-    ["Cocofanto Elefanto"] = "10K$/sec — Sells for 5M",
-    ["Girafa Celestre"] = "20K$/sec — Sells for 7.5M",
-    ["Gattatino Neonino"] = "35K$/sec — Sells for 7.5M",
-    ["Matteo"] = "50K$/sec — Sells for 10M",
-    ["Tralalero Tralala"] = "50K$/sec — Sells for 10M",
-    ["Espresso Signora"] = "70K$/sec — Sells for 25M",
-    ["Odin Din Din Dun"] = "75K$/sec — Sells for 15M",
-    ["Statutino Libertino"] = "75K$/sec — Sells for 20M",
-    ["Trenostruzzo Turbo 3000"] = "150K$/sec — Sells for 25M",
-    ["Ballerino Lololo"] = "200K$/sec — Sells for 35M",
-    ["Tigroligre Frutonni"] = "60K$/sec — Sells for 15M",
-    ["Orcalero Orcala"] = "100K$/sec — Sells for 15M"
-}
-
-local mythicsESPEnabled = false
+-- ESP State
+local playerESPEnabled = false
 local godsESPEnabled = false
+local mythicsESPEnabled = false
 
-local mythicLabels = {}
-local godLabels = {}
+-- Drawing objects tables
+local playerBoxes = {}
+local godsBoxes = {}
+local mythicsBoxes = {}
 
-local function createLabel(text, color)
-    local label = Drawing.new("Text")
-    label.Text = text
-    label.Size = 16
-    label.Color = color
-    label.Center = true
-    label.Outline = true
-    label.Visible = false
-    return label
+-- Helper to create ESP box + text for NPCs
+local function createESPBox(color)
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = color
+    box.Thickness = 2
+    box.Filled = false
+
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Center = true
+    text.Color = color
+    text.Size = 16
+    text.Outline = true
+    text.Font = 2 -- UI font
+
+    return {box = box, text = text}
 end
 
-local function updateLabels(labelTable)
-    for npc, label in pairs(labelTable) do
-        if npc.Parent then
-            local hrp = npc:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-                if onScreen then
-                    label.Position = Vector2.new(screenPos.X, screenPos.Y - 30)
-                    label.Visible = true
-                else
-                    label.Visible = false
-                end
-            else
-                label.Visible = false
-            end
-        else
-            label:Remove()
-            labelTable[npc] = nil
-        end
-    end
+-- Player ESP (fixed)
+local function createPlayerESPBox()
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = Color3.new(1, 1, 1) -- White for players
+    box.Thickness = 2
+    box.Filled = false
+
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Center = true
+    text.Color = Color3.new(1, 1, 1)
+    text.Size = 16
+    text.Outline = true
+    text.Font = 2 -- UI font
+
+    return {box = box, text = text}
 end
 
-local function refreshNPCLabels()
-    -- Refresh Mythics
-    if mythicsESPEnabled then
-        for _, npc in pairs(Workspace:GetChildren()) do
-            if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                local name = npc.Name
-                if mythicRates[name] and not mythicLabels[npc] then
-                    mythicLabels[npc] = createLabel(name .. " — " .. mythicRates[name], Color3.new(1, 0, 1))
-                end
-            end
-        end
-    else
-        for npc, label in pairs(mythicLabels) do
-            label:Remove()
-            mythicLabels[npc] = nil
-        end
-    end
-
-    -- Refresh Brainrot Gods
-    if godsESPEnabled then
-        for _, npc in pairs(Workspace:GetChildren()) do
-            if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                local name = npc.Name
-                if brainrotGodRates[name] and not godLabels[npc] then
-                    godLabels[npc] = createLabel(name .. " — " .. brainrotGodRates[name], Color3.new(0, 0.7, 1))
-                end
-            end
-        end
-    else
-        for npc, label in pairs(godLabels) do
-            label:Remove()
-            godLabels[npc] = nil
+local function cleanPlayerBoxes()
+    for plr, drawObjs in pairs(playerBoxes) do
+        if not plr.Parent or not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then
+            drawObjs.box:Remove()
+            drawObjs.text:Remove()
+            playerBoxes[plr] = nil
         end
     end
 end
 
--- Refresh NPC labels every 2 seconds to avoid heavy loop
-task.spawn(function()
-    while true do
-        if mythicsESPEnabled or godsESPEnabled then
-            refreshNPCLabels()
-        end
-        task.wait(2)
-    end
-end)
-
--- Update label positions every frame
+-- ESP Update Loop
 RunService.RenderStepped:Connect(function()
-    if mythicsESPEnabled then
-        updateLabels(mythicLabels)
+    local camera = workspace.CurrentCamera
+
+    -- Player ESP
+    if playerESPEnabled then
+        cleanPlayerBoxes()
+
+        for _, plr in pairs(game.Players:GetPlayers()) do
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                if not playerBoxes[plr] then
+                    playerBoxes[plr] = createPlayerESPBox()
+                end
+                local hrp = plr.Character.HumanoidRootPart
+                local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                local drawObjs = playerBoxes[plr]
+
+                if onScreen then
+                    local size = Vector3.new(2, 5, 2)
+                    local corners = {
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, -size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, -size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, -size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, -size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, size.Z)),
+                        camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, size.Z)),
+                    }
+                    local xs, ys = {}, {}
+                    for _, corner in pairs(corners) do
+                        table.insert(xs, corner.X)
+                        table.insert(ys, corner.Y)
+                    end
+                    local minX, maxX = math.min(table.unpack(xs)), math.max(table.unpack(xs))
+                    local minY, maxY = math.min(table.unpack(ys)), math.max(table.unpack(ys))
+
+                    drawObjs.box.Position = Vector2.new(minX, minY)
+                    drawObjs.box.Size = Vector2.new(maxX - minX, maxY - minY)
+                    drawObjs.box.Visible = true
+
+                    drawObjs.text.Text = plr.Name
+                    drawObjs.text.Position = Vector2.new(minX + (drawObjs.box.Size.X / 2), minY - 20)
+                    drawObjs.text.Visible = true
+                else
+                    drawObjs.box.Visible = false
+                    drawObjs.text.Visible = false
+                end
+            end
+        end
+    else
+        for _, drawObjs in pairs(playerBoxes) do
+            drawObjs.box.Visible = false
+            drawObjs.text.Visible = false
+        end
     end
+
+    -- Brainrot Gods ESP (blue)
     if godsESPEnabled then
-        updateLabels(godLabels)
+        for _, npc in pairs(Workspace:GetChildren()) do
+            if npc:IsA("Model") and brainrotGodRates[npc.Name] then
+                local hrp = npc:FindFirstChild("HumanoidRootPart")
+                local drawObjs = godsBoxes[npc]
+                if hrp then
+                    if not drawObjs then
+                        godsBoxes[npc] = createESPBox(Color3.fromRGB(0, 170, 255))
+                        drawObjs = godsBoxes[npc]
+                    end
+                    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                    if onScreen then
+                        local size = Vector3.new(2, 5, 2)
+                        local corners = {
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, size.Z)),
+                        }
+                        local xs, ys = {}, {}
+                        for _, corner in pairs(corners) do
+                            table.insert(xs, corner.X)
+                            table.insert(ys, corner.Y)
+                        end
+                        local minX, maxX = math.min(table.unpack(xs)), math.max(table.unpack(xs))
+                        local minY, maxY = math.min(table.unpack(ys)), math.max(table.unpack(ys))
+
+                        drawObjs.box.Position = Vector2.new(minX, minY)
+                        drawObjs.box.Size = Vector2.new(maxX - minX, maxY - minY)
+                        drawObjs.box.Visible = true
+
+                        local info = brainrotGodRates[npc.Name]
+                        drawObjs.text.Text = npc.Name .. "\n" .. info.moneyPerSec .. "/sec\nSell: " .. info.sellsFor
+                        drawObjs.text.Position = Vector2.new(minX + (drawObjs.box.Size.X / 2), minY - 40)
+                        drawObjs.text.Visible = true
+                    else
+                        drawObjs.box.Visible = false
+                        drawObjs.text.Visible = false
+                    end
+                elseif drawObjs then
+                    drawObjs.box.Visible = false
+                    drawObjs.text.Visible = false
+                    godsBoxes[npc] = nil
+                end
+            end
+        end
+    else
+        for npc, drawObjs in pairs(godsBoxes) do
+            drawObjs.box.Visible = false
+            drawObjs.text.Visible = false
+        end
+    end
+
+    -- Mythics ESP (red)
+    if mythicsESPEnabled then
+        for _, npc in pairs(Workspace:GetChildren()) do
+            if npc:IsA("Model") and mythicRates[npc.Name] then
+                local hrp = npc:FindFirstChild("HumanoidRootPart")
+                local drawObjs = mythicsBoxes[npc]
+                if hrp then
+                    if not drawObjs then
+                        mythicsBoxes[npc] = createESPBox(Color3.fromRGB(255, 50, 50))
+                        drawObjs = mythicsBoxes[npc]
+                    end
+                    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                    if onScreen then
+                        local size = Vector3.new(2, 5, 2)
+                        local corners = {
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, size.Y, size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, size.Y, size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, -size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(-size.X, -size.Y, size.Z)),
+                            camera:WorldToViewportPoint(hrp.Position + Vector3.new(size.X, -size.Y, size.Z)),
+                        }
+                        local xs, ys = {}, {}
+                        for _, corner in pairs(corners) do
+                            table.insert(xs, corner.X)
+                            table.insert(ys, corner.Y)
+                        end
+                        local minX, maxX = math.min(table.unpack(xs)), math.max(table.unpack(xs))
+                        local minY, maxY = math.min(table.unpack(ys)), math.max(table.unpack(ys))
+
+                        drawObjs.box.Position = Vector2.new(minX, minY)
+                        drawObjs.box.Size = Vector2.new(maxX - minX, maxY - minY)
+                        drawObjs.box.Visible = true
+
+                        local info = mythicRates[npc.Name]
+                        drawObjs.text.Text = npc.Name .. "\n" .. info.moneyPerSec .. "/sec\nSell: " .. info.sellsFor
+                        drawObjs.text.Position = Vector2.new(minX + (drawObjs.box.Size.X / 2), minY - 40)
+                        drawObjs.text.Visible = true
+                    else
+                        drawObjs.box.Visible = false
+                        drawObjs.text.Visible = false
+                    end
+                elseif drawObjs then
+                    drawObjs.box.Visible = false
+                    drawObjs.text.Visible = false
+                    mythicsBoxes[npc] = nil
+                end
+            end
+        end
+    else
+        for npc, drawObjs in pairs(mythicsBoxes) do
+            drawObjs.box.Visible = false
+            drawObjs.text.Visible = false
+        end
     end
 end)
 
--- GUI Buttons for toggles
+-- GUI Buttons for Mys2 Hub
 autoToggle("Speed", function(enabled)
     speedEnabled = enabled
     if enabled then
@@ -415,34 +502,15 @@ autoToggle("Speed", function(enabled)
 end)
 
 autoToggle("Player ESP", function(enabled)
-    espEnabled = enabled
-    if enabled then
-        updatePlayerESP()
-    else
-        for _, box in pairs(espBoxes) do
-            box.Visible = false
-        end
-    end
-end)
-
-autoToggle("Mythics ESP", function(enabled)
-    mythicsESPEnabled = enabled
-    if not enabled then
-        for npc, label in pairs(mythicLabels) do
-            label:Remove()
-            mythicLabels[npc] = nil
-        end
-    end
+    playerESPEnabled = enabled
 end)
 
 autoToggle("Brainrot Gods ESP", function(enabled)
     godsESPEnabled = enabled
-    if not enabled then
-        for npc, label in pairs(godLabels) do
-            label:Remove()
-            godLabels[npc] = nil
-        end
-    end
+end)
+
+autoToggle("Mythics ESP", function(enabled)
+    mythicsESPEnabled = enabled
 end)
 
 autoButton("TP Up", tpUp)
@@ -457,3 +525,64 @@ end)
 -- Send Discord webhook notification and show popup invite on script load
 sendDiscordWebhookNotification()
 showDiscordPopup()
+
+-- Mys2 Fling GUI
+
+local flingGui = Instance.new("ScreenGui", game.CoreGui)
+flingGui.Name = "Mys2Fling"
+
+local flingFrame = Instance.new("Frame", flingGui)
+flingFrame.Size = UDim2.new(0, 220, 0, 100)
+flingFrame.Position = UDim2.new(0, 250, 0, 100)
+flingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+flingFrame.BorderSizePixel = 0
+flingFrame.Active = true
+flingFrame.Draggable = true
+
+local flingTitle = Instance.new("TextLabel", flingFrame)
+flingTitle.Size = UDim2.new(1, 0, 0, 30)
+flingTitle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+flingTitle.Text = "Mys2 Fling"
+flingTitle.TextColor3 = Color3.new(1, 1, 1)
+flingTitle.Font = Enum.Font.GothamBold
+flingTitle.TextSize = 16
+
+local flingButton = Instance.new("TextButton", flingFrame)
+flingButton.Size = UDim2.new(0, 200, 0, 40)
+flingButton.Position = UDim2.new(0, 10, 0, 50)
+flingButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+flingButton.TextColor3 = Color3.new(1, 1, 1)
+flingButton.Font = Enum.Font.GothamBold
+flingButton.TextSize = 18
+flingButton.Text = "Fling Me Out!"
+
+local flingCooldown = false
+
+flingButton.MouseButton1Click:Connect(function()
+    if flingCooldown then return end
+    flingCooldown = true
+
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        warn("Character or HumanoidRootPart not found.")
+        flingCooldown = false
+        return
+    end
+
+    local hrp = player.Character.HumanoidRootPart
+
+    -- Teleport to corner of the map (example coordinates)
+    local cornerPosition = Vector3.new(-3000, 1000, -3000)
+    hrp.CFrame = CFrame.new(cornerPosition)
+
+    -- Apply velocity for fling effect
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    bodyVelocity.Velocity = Vector3.new(0, 200, 0) -- fling upwards strongly
+    bodyVelocity.Parent = hrp
+
+    -- Remove BodyVelocity after 1 second
+    delay(1, function()
+        bodyVelocity:Destroy()
+        flingCooldown = false
+    end)
+end)
